@@ -4,7 +4,7 @@
 // @description     A premium Dynamic Island for Windows by Aonik with media, weather, clipboard, battery, notifications, and gaming overlays.
 // @version         1.0.0
 // @author          Aonik
-// @github          https://github.com/Aonik
+// @github          https://github.com/Aonikyadav/window-dynamic-island
 // @include         windhawk.exe
 // @compilerOptions -lole32 -loleaut32 -lshcore -ld2d1 -ldwrite -ldwmapi -lgdi32 -luser32 -lshell32 -lruntimeobject -lwindowscodecs -lavrt -lsetupapi -lwinhttp -lpdh
 // @license         MIT
@@ -65,8 +65,8 @@ The Dynamic Island intelligently expands to display context-aware dashboards. Yo
 - Suggestions for UI/UX or new integrations are always welcome.
 
 ### Credits
-- **[ciizerr @GitHub](https://github.com/ciizerr)**: Improved the UI by refining layout alignment, fixing dashboard scaling, and enhancing calendar and weather module integration.
-- **[Antigravity Pairs]**: Contributed Classic Pastel Green & Mint dashboards, auto-hide unhide engine enhancements, and UV Index layout optimizations.
+- **[Aonik Yadav @GitHub](https://github.com/Aonikyadav)**: Author and primary developer. Built and maintains the entire mod — UI, dashboards, system integrations, and all feature work.
+- **AI Assistance**: Contributed Classic Pastel Green & Mint dashboards, auto-hide engine enhancements, and UV Index layout optimizations.
 
 */
 // ==/WindhawkModReadme==
