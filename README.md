@@ -12,9 +12,9 @@ A smooth, interactive overlay for your desktop, inspired by Apple's Dynamic Isla
 
 ### Dashboards
 
-| Media Player | Calendar | Weather | Game Overlay | Idle View | System Status | Battery Status |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| <img src="previews/media.png" width="130" /> | <img src="previews/calender.png" width="130" /> | <img src="previews/weather.png" width="130" /> | <img src="previews/gamebar.png" width="130" /> | <img src="previews/idle.png" width="130" /> | <img src="previews/system-status.png" width="130" /> | <img src="previews/battery-status.png" width="130" /> |
+| Media Player | Calendar | Weather | Game Overlay | Idle View | System Status | Battery Status | Volume OSD |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| <img src="previews/media.png" width="115" /> | <img src="previews/calender.png" width="115" /> | <img src="previews/weather.png" width="115" /> | <img src="previews/gamebar.png" width="115" /> | <img src="previews/idle.png" width="115" /> | <img src="previews/system-status.png" width="115" /> | <img src="previews/battery-status.png" width="115" /> | <img src="previews/volume-inc-dec.png" width="115" /> |
 
 ### Privacy Indicators
 
@@ -39,6 +39,7 @@ A smooth, interactive overlay for your desktop, inspired by Apple's Dynamic Isla
 - 🧭 **Intelligent Auto-Hide:** Auto-hides when idle and unhides instantly when hovering over the island's normal location using an expanded virtual hover area (no 30px target hunting). Auto-hide is suppressed as long as your cursor is directly over the island.
 - 🔒 **Key Alerts:** Get quick visual popups when you hit Caps Lock or Num Lock.
 - 🔋 **Battery Alerts:** Displays fluid animated alerts when you plug in, unplug, hit low battery levels (below 20%, 15%, 10%, or 5%), or reach full charge (100%), featuring the dedicated battery indicator layout. ([Preview](previews/battery-status.png))
+- 🔊 **Volume OSD:** A sleek on-screen display pops up whenever you increase or decrease the system volume, showing the current volume level with a smooth progress bar. ([Preview](previews/volume-inc-dec.png))
 - 🔌 **Device Status:** Alerts when you plug in a USB drive or connect a Bluetooth device.
 - 📋 **Clipboard & Notifications:** Instantly preview what you just copied (visible for 4s) or see your latest Windows notifications.
 - 🎨 **Themes:** Pick from OLED Black, Midnight Blue, Deep Purple, or pick your own hex color.
@@ -66,7 +67,6 @@ Found a bug? Have a cool feature idea? We want to hear from you! Please drop an 
 
 ## 🙌 Shoutouts
 
-- **[ciizerr](https://github.com/ciizerr)**: Massive thanks for fixing UI alignments, smoothing out the dashboard sizing, and polishing the calendar and weather tabs.
 - **[Antigravity Pairs]**: Thanks for styling the premium Classic Pastel Green & Mint dashboards, polishing the auto-hide unhide engine, and fixing text clipping.
 
 ---

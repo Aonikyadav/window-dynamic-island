@@ -32,6 +32,7 @@ The Dynamic Island intelligently expands to display context-aware dashboards. Yo
 | **Game Overlay** | Real-time FPS, CPU, GPU, and RAM utilization overlays tailored for gamers. | ![Gamebar](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/gamebar.png) |
 | **System Status** | Color-coded grid showing CPU, RAM, GPU, Battery, Volume, and Disk usage. | ![System Status](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/system-status.png) |
 | **Battery Status** | Shows a fluid alert when your laptop battery is running low or is fully charged. | ![Battery](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/battery-status.png) |
+| **Volume OSD** | A sleek on-screen display showing the current volume level whenever you increase or decrease system volume. | ![Volume](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/volume-inc-dec.png) |
 | **Idle View** | A minimal dashboard with your battery status, digital clock, and sleek pagination dots. | ![Idle](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/idle.png) |
 | **Camera Privacy** | Shows a green dot when an app is actively using your webcam. | ![Camera](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/camera-detected.png) |
 | **Mic Privacy** | Shows an orange dot when an app is actively using your microphone. | ![Mic](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/mic-detected.png) |
