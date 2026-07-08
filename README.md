@@ -7,20 +7,20 @@ A smooth, interactive overlay for your desktop, inspired by Apple's Dynamic Isla
 ## 📸 See it in Action
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/Full-preview.png" alt="Dynamic Island Preview" width="600" style="border-radius: 8px; margin: 10px;"/>
+  <img src="previews/Full-preview.png" alt="Dynamic Island Preview" width="600" style="border-radius: 8px; margin: 10px;"/>
 </p>
 
 ### Dashboards
 
 | Media Player | Calendar | Weather | Game Overlay | Idle View | System Status |
 | :---: | :---: | :---: | :---: | :---: | :---: |
-| <img src="https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/media.png" width="160" /> | <img src="https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/calender.png" width="160" /> | <img src="https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/weather.png" width="160" /> | <img src="https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/gamebar.png" width="160" /> | <img src="https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/idle.png" width="160" /> | <img src="https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/gamebar.png" width="160" /> |
+| <img src="previews/media.png" width="160" /> | <img src="previews/calender.png" width="160" /> | <img src="previews/weather.png" width="160" /> | <img src="previews/gamebar.png" width="160" /> | <img src="previews/idle.png" width="160" /> | <img src="previews/system-status.png" width="160" /> |
 
 ### Privacy Indicators
 
 | Camera Detected | Microphone Detected |
 | :---: | :---: |
-| <img src="https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/camera-detected.png" width="200" /> | <img src="https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/mic-detected.png" width="200" /> |
+| <img src="previews/camera-detected.png" width="200" /> | <img src="previews/mic-detected.png" width="200" /> |
 
 ---
 
