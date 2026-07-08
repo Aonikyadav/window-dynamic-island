@@ -61,13 +61,14 @@ Tweak the mod easily from the **Windhawk settings panel**:
 
 ## 💬 Let's Chat!
 
-Found a bug? Have a cool feature idea? We want to hear from you! Please drop an issue on our [GitHub Repository](https://github.com/devcode90/Dynamic-Island-for-Windows/issues). Your feedback keeps this mod alive.
+Found a bug? Have a cool feature idea? We want to hear from you! Please drop an issue on our [GitHub Repository](https://github.com/Aonikyadav/window-dynamic-island/issues). Your feedback keeps this mod alive.
 
 ---
 
 ## 🙌 Shoutouts
 
-- **[Antigravity Pairs]**: Thanks for styling the premium Classic Pastel Green & Mint dashboards, polishing the auto-hide unhide engine, and fixing text clipping.
+- **[Aonik Yadav](https://github.com/Aonikyadav)** — Built and maintains this mod. Designed the Dynamic Island UI, system dashboards, and all feature integrations.
+- **AI Assistance** — Helped style the premium Classic Pastel Green & Mint dashboards, polish the auto-hide engine, and fix text clipping.
 
 ---
 
