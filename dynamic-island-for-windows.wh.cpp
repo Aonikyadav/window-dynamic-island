@@ -16,7 +16,7 @@
 
 A fluid, living overlay inspired by Apple's Dynamic Island, bringing a beautiful, highly-responsive UI to your Windows desktop. Built natively with hardware-accelerated Direct2D rendering for a buttery-smooth 60 FPS experience.
 
-![Aonik Dynamic Island Preview](https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/Full-preview.png)
+![Aonik Dynamic Island Preview](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/Full-preview.png)
 
 ---
 
@@ -26,13 +26,15 @@ The Dynamic Island intelligently expands to display context-aware dashboards. Yo
 
 | Module | Description | Preview |
 | :--- | :--- | :--- |
-| **Media Player** | Shows live album art, track details, audio waveforms, and full playback controls. | ![Media](https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/media.png) |
-| **Calendar** | A sleek, perfectly aligned monthly calendar that highlights the current date. | ![Calendar](https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/calender.png) |
-| **Weather** | Real-time weather stats powered by wttr.in, including wind speed, humidity, and "feels like" temperature. | ![Weather](https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/weather.png) |
-| **Game Overlay** | Real-time FPS, CPU, GPU, and RAM utilization overlays tailored for gamers. | ![Gamebar](https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/gamebar.png) |
-| **Idle View** | A minimal dashboard with your battery status, digital clock, and sleek pagination dots. | ![Idle](https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/idle.png) |
-| **Camera Privacy** | Shows a green dot when an app is actively using your webcam. | ![Camera](https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/camera-detected.png) |
-| **Mic Privacy** | Shows an orange dot when an app is actively using your microphone. | ![Mic](https://raw.githubusercontent.com/devcode90/Dynamic-Island-for-Windows/main/previews/mic-detected.png) |
+| **Media Player** | Shows live album art, track details, audio waveforms, and full playback controls. | ![Media](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/media.png) |
+| **Calendar** | A sleek, perfectly aligned monthly calendar that highlights the current date. | ![Calendar](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/calender.png) |
+| **Weather** | Real-time weather stats powered by wttr.in, including wind speed, humidity, and "feels like" temperature. | ![Weather](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/weather.png) |
+| **Game Overlay** | Real-time FPS, CPU, GPU, and RAM utilization overlays tailored for gamers. | ![Gamebar](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/gamebar.png) |
+| **System Status** | Color-coded grid showing CPU, RAM, GPU, Battery, Volume, and Disk usage. | ![System Status](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/system-status.png) |
+| **Battery Status** | Shows a fluid alert when your laptop battery is running low or is fully charged. | ![Battery](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/battery-status.png) |
+| **Idle View** | A minimal dashboard with your battery status, digital clock, and sleek pagination dots. | ![Idle](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/idle.png) |
+| **Camera Privacy** | Shows a green dot when an app is actively using your webcam. | ![Camera](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/camera-detected.png) |
+| **Mic Privacy** | Shows an orange dot when an app is actively using your microphone. | ![Mic](https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/previews/mic-detected.png) |
 
 ---
 
@@ -57,12 +59,13 @@ The Dynamic Island intelligently expands to display context-aware dashboards. Yo
 ## 📝 Feedback & Credits
 
 ### Support / Bug Reports
-- Please use [Windhawk Mods Issues](https://github.com/ramensoftware/windhawk-mods/issues) or [aonik-dynamic-island issues](https://github.com/devcode90/aonik-dynamic-island/issues) to report bugs, request features, or share feedback.  
+- Please use [window-dynamic-island issues](https://github.com/Aonikyadav/window-dynamic-island/issues) to report bugs, request features, or share feedback.  
 - Clear descriptions, screenshots, or steps to reproduce help improve fixes and updates.  
 - Suggestions for UI/UX or new integrations are always welcome.
 
 ### Credits
 - **[ciizerr @GitHub](https://github.com/ciizerr)**: Improved the UI by refining layout alignment, fixing dashboard scaling, and enhancing calendar and weather module integration.
+- **[Antigravity Pairs]**: Contributed Classic Pastel Green & Mint dashboards, auto-hide unhide engine enhancements, and UV Index layout optimizations.
 
 */
 // ==/WindhawkModReadme==

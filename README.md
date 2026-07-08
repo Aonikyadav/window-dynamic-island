@@ -12,9 +12,9 @@ A smooth, interactive overlay for your desktop, inspired by Apple's Dynamic Isla
 
 ### Dashboards
 
-| Media Player | Calendar | Weather | Game Overlay | Idle View | System Status |
-| :---: | :---: | :---: | :---: | :---: | :---: |
-| <img src="previews/media.png" width="160" /> | <img src="previews/calender.png" width="160" /> | <img src="previews/weather.png" width="160" /> | <img src="previews/gamebar.png" width="160" /> | <img src="previews/idle.png" width="160" /> | <img src="previews/system-status.png" width="160" /> |
+| Media Player | Calendar | Weather | Game Overlay | Idle View | System Status | Battery Status |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| <img src="previews/media.png" width="130" /> | <img src="previews/calender.png" width="130" /> | <img src="previews/weather.png" width="130" /> | <img src="previews/gamebar.png" width="130" /> | <img src="previews/idle.png" width="130" /> | <img src="previews/system-status.png" width="130" /> | <img src="previews/battery-status.png" width="130" /> |
 
 ### Privacy Indicators
 
@@ -38,7 +38,7 @@ A smooth, interactive overlay for your desktop, inspired by Apple's Dynamic Isla
 - 🧪 **Premium Mint & Green Aesthetic:** The Calendar, System Status, and Game Overlay dashboards are styled with a gorgeous **Classic Pastel Mint Green (`#33C773`)** and **Teal-Mint (`#00C7A6`)** palette, featuring dynamic backdrop card and border tints matching the metric's state (green, yellow, or warning red).
 - 🧭 **Intelligent Auto-Hide:** Auto-hides when idle and unhides instantly when hovering over the island's normal location using an expanded virtual hover area (no 30px target hunting). Auto-hide is suppressed as long as your cursor is directly over the island.
 - 🔒 **Key Alerts:** Get quick visual popups when you hit Caps Lock or Num Lock.
-- 🔋 **Battery & Power:** Fluid animations when you plug in, unplug, or hit low battery (below 20%, 15%, 10%, or 5%), plus a new full battery notification.
+- 🔋 **Battery Alerts:** Displays fluid animated alerts when you plug in, unplug, hit low battery levels (below 20%, 15%, 10%, or 5%), or reach full charge (100%), featuring the dedicated battery indicator layout. ([Preview](previews/battery-status.png))
 - 🔌 **Device Status:** Alerts when you plug in a USB drive or connect a Bluetooth device.
 - 📋 **Clipboard & Notifications:** Instantly preview what you just copied (visible for 4s) or see your latest Windows notifications.
 - 🎨 **Themes:** Pick from OLED Black, Midnight Blue, Deep Purple, or pick your own hex color.
