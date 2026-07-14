@@ -3,8 +3,8 @@
 // @name            Window Dynamic Island
 // @description     A premium Dynamic Island for Windows by Aonik with media, weather, clipboard, battery, notifications, and gaming overlays.
 // @version         1.0.0
-// @author          Aonik
-// @github          https://github.com/Aonikyadav/window-dynamic-island
+// @author          Zoro
+// @github          https://github.com/Aonikyadav
 // @include         windhawk.exe
 // @compilerOptions -lole32 -loleaut32 -lshcore -ld2d1 -ldwrite -ldwmapi -lgdi32 -luser32 -lshell32 -lruntimeobject -lwindowscodecs -lavrt -lsetupapi -lwinhttp -lpdh
 // @license         MIT
