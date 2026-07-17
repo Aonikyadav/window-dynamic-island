@@ -378,6 +378,7 @@ extern "C" {
         else if (wcscmp(name, L"Appearance.ExpandOnTrackChange") == 0) def = 1;
         else if (wcscmp(name, L"Appearance.StartWithWindows") == 0) def = 0;
         else if (wcscmp(name, L"Appearance.SplitMode") == 0) def = 1;
+        else if (wcscmp(name, L"Themes.AccentBrightness") == 0) def = 0;
 
         return GetPrivateProfileIntW(L"Settings", name, def, GetIniPath().c_str());
     }
@@ -471,6 +472,7 @@ struct Settings {
     bool startWithWindows = false;
     bool splitMode = true;
     AirPodsMode airpodsMode = AirPodsMode::Both;
+    int accentBrightness = 0;
     // Color customization
     D2D1_COLOR_F pillBgColor = D2D1::ColorF(0.051f, 0.051f, 0.059f, 1.0f); // #0D0D0F
     D2D1_COLOR_F textPrimaryColor = D2D1::ColorF(0.969f, 0.969f, 0.969f, 1.0f); // #F7F7F7
@@ -841,6 +843,7 @@ void LoadSettings() {
     next.colorfulModules = Wh_GetIntSetting(L"Themes.ColorfulModules") != 0;
     next.expandOnTrackChange = Wh_GetIntSetting(L"Appearance.ExpandOnTrackChange") != 0;
     next.splitMode = Wh_GetIntSetting(L"Appearance.SplitMode") != 0;
+    next.accentBrightness = Wh_GetIntSetting(L"Themes.AccentBrightness");
     next.startWithWindows = Wh_GetIntSetting(L"Appearance.StartWithWindows") != 0;
     if (next.startWithWindows != IsStartupRegistryEnabled()) {
         SetStartupRegistry(next.startWithWindows);
@@ -5767,6 +5770,7 @@ HWND g_hwndExpandTrack = nullptr;
 HWND g_hwndSplitMode = nullptr;
 HWND g_hwndStartup = nullptr;
 HWND g_hwndAirPodsMode = nullptr;
+HWND g_hwndAccentBrightness = nullptr;
 
 LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
@@ -5797,6 +5801,7 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
             int colorful = Wh_GetIntSetting(L"Themes.ColorfulModules");
             int expandTrack = Wh_GetIntSetting(L"Appearance.ExpandOnTrackChange");
             int splitMode = Wh_GetIntSetting(L"Appearance.SplitMode");
+            int accentBrightness = Wh_GetIntSetting(L"Themes.AccentBrightness");
 
             g_hFont = CreateFontW(-12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                                   OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
@@ -5989,6 +5994,25 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
                 SendMessageW(g_hwndAirPodsMode, CB_SETCURSEL, 0, 0);
             }
 
+            ycp += rowHeight;
+            AddLabel(L"Accent Brightness:", x, ycp, labelWidth);
+            g_hwndAccentBrightness = AddComboBox(x + labelWidth, ycp, controlWidth, 200);
+            SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"0% Boost (Normal)");
+            SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"10% Boost");
+            SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"25% Boost");
+            SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"40% Boost");
+            SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"50% Boost");
+            SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"75% Boost");
+            SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"100% Boost (Max)");
+            int abSel = 0;
+            if (accentBrightness == 10) abSel = 1;
+            else if (accentBrightness == 25) abSel = 2;
+            else if (accentBrightness == 40) abSel = 3;
+            else if (accentBrightness == 50) abSel = 4;
+            else if (accentBrightness == 75) abSel = 5;
+            else if (accentBrightness == 100) abSel = 6;
+            SendMessageW(g_hwndAccentBrightness, CB_SETCURSEL, abSel, 0);
+
             y2 += rowHeight - 4;
             g_hwndExpandTrack = AddCheckbox(L"Expand on Track Change", expandTrack != 0, x2, y2, col2Width);
             y2 += rowHeight - 4;
@@ -5997,7 +6021,7 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
             g_hwndStartup = AddCheckbox(L"Start with Windows", IsStartupRegistryEnabled(), x2, y2, col2Width);
 
             // Buttons at the bottom
-            int btnY = 385;
+            int btnY = 415;
             HWND btnSave = CreateWindowExW(0, L"BUTTON", L"Save Settings", WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON | WS_TABSTOP, 180, btnY, 110, 28, hwnd, (HMENU)IDOK, GetModuleHandle(nullptr), nullptr);
             SendMessageW(btnSave, WM_SETFONT, (WPARAM)g_hFont, TRUE);
 
@@ -6071,6 +6095,17 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
                 if (apModeSel == 1) apModeVal = L"small";
                 else if (apModeSel == 2) apModeVal = L"bigger";
                 WritePrivateProfileStringW(L"Settings", L"Modules.AirPodsMode", apModeVal, GetIniPath().c_str());
+
+                int abSel = SendMessage(g_hwndAccentBrightness, CB_GETCURSEL, 0, 0);
+                int abVal = 0;
+                if (abSel == 1) abVal = 10;
+                else if (abSel == 2) abVal = 25;
+                else if (abSel == 3) abVal = 40;
+                else if (abSel == 4) abVal = 50;
+                else if (abSel == 5) abVal = 75;
+                else if (abSel == 6) abVal = 100;
+                wchar_t abValStr[16];swprintf_s(abValStr, L"%d", abVal);
+                WritePrivateProfileStringW(L"Settings", L"Themes.AccentBrightness", abValStr, GetIniPath().c_str());
 
                 // Read and save the custom edit hex values directly
                 HWND hwndAccEdit = GetDlgItem(hwnd, 2010);
@@ -6236,7 +6271,7 @@ void OpenSettingsDialog(HWND parent) {
     wcx.hbrBackground = (HBRUSH)COLOR_WINDOW;
     RegisterClassExW(&wcx);
 
-    int width = 600, height = 465;
+    int width = 600, height = 495;
     int screenWidth = GetSystemMetrics(SM_CXSCREEN);
     int screenHeight = GetSystemMetrics(SM_CYSCREEN);
     int x = (screenWidth - width) / 2;

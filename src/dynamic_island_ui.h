@@ -306,6 +306,48 @@ class Renderer {
         lastFontScale_ = scale;
     }
 
+    void RGBtoHSL(float r, float g, float b, float& h, float& s, float& l) {
+        float maxVal = std::max({r, g, b});
+        float minVal = std::min({r, g, b});
+        l = (maxVal + minVal) * 0.5f;
+
+        if (maxVal == minVal) {
+            h = s = 0.0f; // achromatic
+        } else {
+            float d = maxVal - minVal;
+            s = l > 0.5f ? d / (2.0f - maxVal - minVal) : d / (maxVal + minVal);
+            if (maxVal == r) {
+                h = (g - b) / d + (g < b ? 6.0f : 0.0f);
+            } else if (maxVal == g) {
+                h = (b - r) / d + 2.0f;
+            } else if (maxVal == b) {
+                h = (r - g) / d + 4.0f;
+            }
+            h /= 6.0f;
+        }
+    }
+
+    float HueToRGB(float p, float q, float t) {
+        if (t < 0.0f) t += 1.0f;
+        if (t > 1.0f) t -= 1.0f;
+        if (t < 1.0f / 6.0f) return p + (q - p) * 6.0f * t;
+        if (t < 1.0f / 2.0f) return q;
+        if (t < 2.0f / 3.0f) return p + (q - p) * (2.0f / 3.0f - t) * 6.0f;
+        return p;
+    }
+
+    void HSLtoRGB(float h, float s, float l, float& r, float& g, float& b) {
+        if (s == 0.0f) {
+            r = g = b = l; // achromatic
+        } else {
+            float q = l < 0.5f ? l * (1.0f + s) : l + s - l * s;
+            float p = 2.0f * l - q;
+            r = HueToRGB(p, q, h + 1.0f / 3.0f);
+            g = HueToRGB(p, q, h);
+            b = HueToRGB(p, q, h - 1.0f / 3.0f);
+        }
+    }
+
     void EnsureBrushes(const Settings& settings, const SharedState& state) {
         D2D1_COLOR_F accentTarget = settings.customAccent;
         if (settings.accentMode == AccentMode::System) {
@@ -321,6 +363,18 @@ class Renderer {
             accentTarget = D2D1::ColorF(0.0f, 1.0f, 1.0f, 1.0f); // Cyberpunk (Neon Cyan)
         } else if (settings.colorTheme == 11) {
             accentTarget = D2D1::ColorF(0.0f, 0.898f, 1.0f, 1.0f); // Holographic AI (Jarvis Cyan)
+        }
+
+        // Apply accent brightness boost if configured
+        if (settings.accentBrightness > 0) {
+            float boost = settings.accentBrightness / 100.0f;
+            float h, s, l;
+            RGBtoHSL(accentTarget.r, accentTarget.g, accentTarget.b, h, s, l);
+            // Boost lightness toward 1.0
+            l = l + (1.0f - l) * boost;
+            // Boost saturation to keep color vibrant
+            s = std::min(1.0f, s + (1.0f - s) * (boost * 0.5f));
+            HSLtoRGB(h, s, l, accentTarget.r, accentTarget.g, accentTarget.b);
         }
 
         // Q3: Smooth accent color transition â€” lerp toward the target at ~3% per frame
