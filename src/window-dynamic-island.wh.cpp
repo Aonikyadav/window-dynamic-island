@@ -377,6 +377,7 @@ extern "C" {
         else if (wcscmp(name, L"Themes.ColorfulModules") == 0) def = 0;
         else if (wcscmp(name, L"Appearance.ExpandOnTrackChange") == 0) def = 1;
         else if (wcscmp(name, L"Appearance.StartWithWindows") == 0) def = 0;
+        else if (wcscmp(name, L"Appearance.SplitMode") == 0) def = 1;
 
         return GetPrivateProfileIntW(L"Settings", name, def, GetIniPath().c_str());
     }
@@ -468,6 +469,7 @@ struct Settings {
     bool colorfulModules = false;
     bool expandOnTrackChange = true;
     bool startWithWindows = false;
+    bool splitMode = true;
     AirPodsMode airpodsMode = AirPodsMode::Both;
     // Color customization
     D2D1_COLOR_F pillBgColor = D2D1::ColorF(0.051f, 0.051f, 0.059f, 1.0f); // #0D0D0F
@@ -838,6 +840,7 @@ void LoadSettings() {
     next.offsetY = Wh_GetIntSetting(L"Appearance.OffsetY");
     next.colorfulModules = Wh_GetIntSetting(L"Themes.ColorfulModules") != 0;
     next.expandOnTrackChange = Wh_GetIntSetting(L"Appearance.ExpandOnTrackChange") != 0;
+    next.splitMode = Wh_GetIntSetting(L"Appearance.SplitMode") != 0;
     next.startWithWindows = Wh_GetIntSetting(L"Appearance.StartWithWindows") != 0;
     if (next.startWithWindows != IsStartupRegistryEnabled()) {
         SetStartupRegistry(next.startWithWindows);
@@ -4290,118 +4293,147 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                     float clickX = unX + unW * 0.5f;
                     float clickY = unY + unH * 0.5f;
 
-                    // Edit/Done button
-                    float btnW = 66.0f;
-                    float btnH = 20.0f;
-                    float editBtnLeft = unW - btnW - 20.0f;
-                    float editBtnRight = unW - 20.0f;
-                    float editBtnTop = 10.0f;
-                    float editBtnBottom = 10.0f + btnH;
+                    // Calculate button boundaries exactly as drawn in dynamic_island_ui.h
+                    RECT windowRect = {};
+                    GetWindowRect(hwnd, &windowRect);
+                    POINT mouseCursor = {};
+                    GetCursorPos(&mouseCursor);
+                    bool hover = PtInRect(&windowRect, mouseCursor) != FALSE;
+                    bool pinned = Wh_GetIntValue(L"PinnedExpanded", 0) != 0;
 
-                    if (clickX >= editBtnLeft && clickX <= editBtnRight && clickY >= editBtnTop && clickY <= editBtnBottom) {
+                    float scale = (hover || pinned) ? 1.025f : 1.0f;
+                    float topY = 12.0f * scale;
+                    float btnSize = 22.0f * scale;
+                    float gap = 8.0f * scale;
+                    float startX = unW - 24.0f * scale;
+
+                    // Settings Button
+                    float gearLeft = startX - btnSize;
+                    float gearRight = startX;
+                    float gearTop = topY;
+                    float gearBottom = topY + btnSize;
+
+                    // Edit Button
+                    float editLeft = startX - btnSize - (btnSize + gap);
+                    float editRight = startX - (btnSize + gap);
+                    float editTop = topY;
+                    float editBottom = topY + btnSize;
+
+                    // Add Button
+                    float addLeft = startX - btnSize - 2.0f * (btnSize + gap);
+                    float addRight = startX - 2.0f * (btnSize + gap);
+                    float addTop = topY;
+                    float addBottom = topY + btnSize;
+
+                    // 1. Settings button (gear) click
+                    if (clickX >= gearLeft && clickX <= gearRight && clickY >= gearTop && clickY <= gearBottom) {
+                        ::OpenSettingsDialog(hwnd);
+                        return 0;
+                    }
+
+                    // 2. Edit button (minus / check) click
+                    if (clickX >= editLeft && clickX <= editRight && clickY >= editTop && clickY <= editBottom) {
                         g_toolsEditMode = !g_toolsEditMode;
                         g_layoutDirty = true;
                         return 0;
                     }
 
-                    // Card Grid Click Checking
-                    float startY = 42.0f;
-                    float cardW = 88.0f;
-                    float cardH = 58.0f;
-                    float gapX = 10.0f;
-                    float gapY = 10.0f;
+                    // 3. Add button (plus) click
+                    if (clickX >= addLeft && clickX <= addRight && clickY >= addTop && clickY <= addBottom) {
+                        HMENU menu = CreatePopupMenu();
+                        std::vector<std::wstring> availableToAdd;
+                        int idx = 0;
+                        for (const auto& t : kAllTools) {
+                            if (std::find(g_activeTools.begin(), g_activeTools.end(), t.id) == g_activeTools.end()) {
+                                AppendMenuW(menu, MF_STRING, 100 + idx, (t.icon + L" " + t.name).c_str());
+                                availableToAdd.push_back(t.id);
+                                idx++;
+                            }
+                        }
+                        if (idx > 0) {
+                            POINT pt;
+                            GetCursorPos(&pt);
+                            int choice = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, nullptr);
+                            if (choice >= 100 && choice < 100 + idx) {
+                                g_activeTools.push_back(availableToAdd[choice - 100]);
+                                SaveToolsList();
+                                g_layoutDirty = true;
+                            }
+                        }
+                        DestroyMenu(menu);
+                        return 0;
+                    }
+
+                    // Card Grid Click Checking (matching grid layout in dynamic_island_ui.h)
+                    float startGridY = 46.0f * scale;
+                    float cardW = 90.0f * scale;
+                    float cardH = 72.0f * scale;
+                    float gapX = 12.0f * scale;
+                    float gapY = 12.0f * scale;
+                    float marginX = 12.0f * scale;
 
                     size_t totalItems = g_activeTools.size();
-                    bool showAdd = totalItems < 10;
-                    size_t gridCount = totalItems + (showAdd ? 1 : 0);
 
-                    size_t cols = gridCount > 4 ? 4 : gridCount;
-                    float rowW = cols * cardW + (cols - 1) * gapX;
-                    float startX = (unW - rowW) * 0.5f;
-
-                    for (size_t i = 0; i < gridCount; ++i) {
+                    for (size_t i = 0; i < totalItems; ++i) {
                         size_t r = i / 4;
                         size_t c = i % 4;
-                        float x = startX + c * (cardW + gapX);
-                        float y = startY + r * (cardH + gapY);
+                        float x = marginX + c * (cardW + gapX);
+                        float y = startGridY + r * (cardH + gapY);
 
-                        if (clickX >= x && clickX <= x + cardW && clickY >= y && clickY <= y + cardH) {
-                            if (i < totalItems) {
-                                // Clicked active tool
-                                if (g_toolsEditMode) {
-                                    // Check if clicked the red deletion badge at top-right
-                                    if (clickX >= x + cardW - 16.0f && clickY <= y + 16.0f) {
-                                        g_activeTools.erase(g_activeTools.begin() + i);
-                                        SaveToolsList();
-                                        g_layoutDirty = true;
-                                        return 0;
-                                    }
-                                } else {
-                                    // Launch tool
-                                    std::wstring toolId = g_activeTools[i];
-                                    if (toolId == L"clipboard") {
-                                        keybd_event(VK_LWIN, 0, 0, 0);
-                                        keybd_event('V', 0, 0, 0);
-                                        keybd_event('V', 0, KEYEVENTF_KEYUP, 0);
-                                        keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, 0);
-                                        return 0;
-                                    }
-                                    if (toolId == L"settings") {
-                                        ::OpenSettingsDialog(hwnd);
-                                        return 0;
-                                    }
-                                    if (toolId == L"timer") {
-                                        std::thread([](HWND hParent) {
-                                            if (ShowTimerPickerModal(hParent)) {
-                                                int totalSec = g_tpSelectedHours * 3600 + g_tpSelectedMinutes * 60 + g_tpSelectedSeconds;
-                                                if (totalSec > 0) {
-                                                    std::lock_guard<std::mutex> lock(g_stateMutex);
-                                                    g_timerActive = true;
-                                                    g_timerDurationMs = totalSec * 1000ULL;
-                                                    g_timerTargetTick = GetTickCount64() + g_timerDurationMs;
-                                                    g_timerPaused = false;
-                                                    g_timerPauseRemainingMs = 0;
-                                                    g_timerAlertActive = false;
-                                                    g_layoutDirty = true;
-                                                }
-                                                PostMessageW(hParent, WM_NULL, 0, 0);
-                                            }
-                                        }, hwnd).detach();
-                                        return 0;
-                                    }
-                                    const ToolItem* item = nullptr;
-                                    for (const auto& t : kAllTools) {
-                                        if (t.id == toolId) { item = &t; break; }
-                                    }
-                                    if (item) {
-                                        ShellExecuteW(nullptr, L"open", item->cmd.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-                                        return 0;
-                                    }
+                        // Calculate hovered card boundary
+                        float cardTop = y - 3.0f * scale;
+                        float cardBottom = y + cardH - 3.0f * scale;
+
+                        if (clickX >= x && clickX <= x + cardW && clickY >= cardTop && clickY <= cardBottom) {
+                            if (g_toolsEditMode) {
+                                // Check if clicked the red deletion badge at top-right of the card
+                                float bx = (x + cardW) - 10.0f * scale;
+                                float by = cardTop + 10.0f * scale;
+                                float distBadgeSq = (clickX - bx) * (clickX - bx) + (clickY - by) * (clickY - by);
+                                if (distBadgeSq <= 12.0f * 12.0f * scale * scale) { // Generous hit target
+                                    g_activeTools.erase(g_activeTools.begin() + i);
+                                    SaveToolsList();
+                                    g_layoutDirty = true;
+                                    return 0;
                                 }
                             } else {
-                                // Clicked Add (+) card
-                                HMENU menu = CreatePopupMenu();
-                                std::vector<std::wstring> availableToAdd;
-                                int idx = 0;
-                                for (const auto& t : kAllTools) {
-                                    if (std::find(g_activeTools.begin(), g_activeTools.end(), t.id) == g_activeTools.end()) {
-                                        AppendMenuW(menu, MF_STRING, 100 + idx, (t.icon + L" " + t.name).c_str());
-                                        availableToAdd.push_back(t.id);
-                                        idx++;
-                                    }
+                                // Launch tool
+                                std::wstring toolId = g_activeTools[i];
+                                if (toolId == L"clipboard") {
+                                    keybd_event(VK_LWIN, 0, 0, 0);
+                                    keybd_event('V', 0, 0, 0);
+                                    keybd_event('V', 0, KEYEVENTF_KEYUP, 0);
+                                    keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, 0);
+                                    return 0;
                                 }
-                                if (idx > 0) {
-                                    POINT pt;
-                                    GetCursorPos(&pt);
-                                    int choice = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, nullptr);
-                                    if (choice >= 100 && choice < 100 + idx) {
-                                        g_activeTools.push_back(availableToAdd[choice - 100]);
-                                        SaveToolsList();
-                                        g_layoutDirty = true;
-                                    }
+                                if (toolId == L"settings") {
+                                    ::OpenSettingsDialog(hwnd);
+                                    return 0;
                                 }
-                                DestroyMenu(menu);
-                                return 0;
+                                if (toolId == L"timer") {
+                                    std::thread([](HWND hParent) {
+                                        if (ShowTimerPickerModal(hParent)) {
+                                            int totalSec = g_tpSelectedHours * 3600 + g_tpSelectedMinutes * 60 + g_tpSelectedSeconds;
+                                            if (totalSec > 0) {
+                                                std::lock_guard<std::mutex> lock(g_stateMutex);
+                                                g_timerActive = true;
+                                                g_timerDurationMs = totalSec * 1000ULL;
+                                                g_timerTargetTick = GetTickCount64() + g_timerDurationMs;
+                                                g_timerPaused = false;
+                                                g_timerPauseRemainingMs = 0;
+                                                g_timerAlertActive = false;
+                                                g_layoutDirty = true;
+                                            }
+                                            PostMessageW(hParent, WM_NULL, 0, 0);
+                                        }
+                                    }, hwnd).detach();
+                                    return 0;
+                                }
+                                const ToolItem* item = FindToolById(toolId);
+                                if (item) {
+                                    ShellExecuteW(nullptr, L"open", item->cmd.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                                    return 0;
+                                }
                             }
                         }
                     }
@@ -4623,7 +4655,7 @@ DWORD WINAPI RenderThreadProc(void*) {
         const std::vector<IslandKind> kinds = ChooseActivities(snapshot, g_settings, now);
         Activity primary = ActivityForKind(kinds[0], g_settings, snapshot);
         std::optional<Activity> secondary;
-        if (kinds.size() >= 2) {
+        if (kinds.size() >= 2 && g_settings.splitMode) {
             secondary = ActivityForKind(kinds[1], g_settings, snapshot);
             // Adjust widths for Split mode!
             primary.width = 62.0f * g_settings.sizeScale;
@@ -4711,8 +4743,24 @@ DWORD WINAPI RenderThreadProc(void*) {
         if (primary.kind == IslandKind::Media) {
             bool recentArtChange = g_settings.expandOnTrackChange && ((NowSeconds() - g_state.media.artChangedAt) < 4.0);
             if (isHoverExpanded || pinned || recentArtChange) {
-                primary.width = 380.0f * g_settings.sizeScale;
-                primary.height = 184.0f * g_settings.sizeScale;
+                int tab = g_idleTab % 5;
+                if (tab < 0) tab += 5;
+                if (tab == 1) { // Calendar
+                    primary.width = 420.0f * g_settings.sizeScale;
+                    primary.height = 220.0f * g_settings.sizeScale;
+                } else if (tab == 2) { // Weather
+                    primary.width = 380.0f * g_settings.sizeScale;
+                    primary.height = 184.0f * g_settings.sizeScale;
+                } else if (tab == 3) { // System Status
+                    primary.width = 410.0f * g_settings.sizeScale;
+                    primary.height = 176.0f * g_settings.sizeScale;
+                } else if (tab == 4) { // Tools Tray
+                    primary.width = 420.0f * g_settings.sizeScale;
+                    primary.height = 202.0f * g_settings.sizeScale;
+                } else { // Media (tab == 0)
+                    primary.width = 380.0f * g_settings.sizeScale;
+                    primary.height = 184.0f * g_settings.sizeScale;
+                }
             }
         }
         if (primary.kind == IslandKind::Timer) {
@@ -5720,6 +5768,7 @@ HWND g_hwndOffsetY = nullptr;
 HWND g_hwndCity = nullptr;
 HWND g_hwndColorful = nullptr;
 HWND g_hwndExpandTrack = nullptr;
+HWND g_hwndSplitMode = nullptr;
 HWND g_hwndStartup = nullptr;
 HWND g_hwndAirPodsMode = nullptr;
 
@@ -5751,6 +5800,7 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
             int theme = Wh_GetIntValue(L"ColorTheme", 0);
             int colorful = Wh_GetIntSetting(L"Themes.ColorfulModules");
             int expandTrack = Wh_GetIntSetting(L"Appearance.ExpandOnTrackChange");
+            int splitMode = Wh_GetIntSetting(L"Appearance.SplitMode");
 
             g_hFont = CreateFontW(-12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                                   OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
@@ -5946,6 +5996,8 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
             y2 += rowHeight - 4;
             g_hwndExpandTrack = AddCheckbox(L"Expand on Track Change", expandTrack != 0, x2, y2, col2Width);
             y2 += rowHeight - 4;
+            g_hwndSplitMode = AddCheckbox(L"Enable Split Mode (Multiple Events)", splitMode != 0, x2, y2, col2Width);
+            y2 += rowHeight - 4;
             g_hwndStartup = AddCheckbox(L"Start with Windows", IsStartupRegistryEnabled(), x2, y2, col2Width);
 
             // Buttons at the bottom
@@ -6059,6 +6111,7 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
                 WriteCheck(g_hwndFahr, L"Modules.WeatherFahrenheit");
                 WriteCheck(g_hwndColorful, L"Themes.ColorfulModules");
                 WriteCheck(g_hwndExpandTrack, L"Appearance.ExpandOnTrackChange");
+                WriteCheck(g_hwndSplitMode, L"Appearance.SplitMode");
 
                 bool startupChecked = (SendMessage(g_hwndStartup, BM_GETCHECK, 0, 0) == BST_CHECKED);
                 SetStartupRegistry(startupChecked);
