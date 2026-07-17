@@ -1129,14 +1129,7 @@ class Renderer {
         bool hoverEdit = (cursor.x >= editRect.left && cursor.x <= editRect.right && cursor.y >= editRect.top && cursor.y <= editRect.bottom);
         bool hoverAdd = (cursor.x >= addRect.left && cursor.x <= addRect.right && cursor.y >= addRect.top && cursor.y <= addRect.bottom);
 
-        // Tooltip description based on hovered toolbar item
-        std::wstring subtitle = L"";
-        if (hoverGear) subtitle = L" \u2022 Settings";
-        else if (hoverEdit) subtitle = g_toolsEditMode ? L" \u2022 Exit Edit Mode" : L" \u2022 Edit/Remove Utilities";
-        else if (hoverAdd) subtitle = L" \u2022 Add a Utility";
-        else if (g_toolsEditMode) subtitle = L" \u2022 Drag to Reorder";
-
-        std::wstring titleText = L"Tools & Utilities" + subtitle;
+        std::wstring titleText = L"Tools & Utilities";
         D2D1_RECT_F titleRect = D2D1::RectF(rect.left + 24.0f * scale, rect.top + 12.0f * scale, rect.right, rect.top + 32.0f * scale);
         
         target_->DrawTextW(titleText.c_str(), static_cast<UINT32>(titleText.length()), boldTextFormat_.Get(), titleRect, textBrush_.Get(), D2D1_DRAW_TEXT_OPTIONS_NONE);

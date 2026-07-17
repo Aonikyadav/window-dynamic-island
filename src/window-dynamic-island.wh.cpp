@@ -4301,6 +4301,11 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                     bool hover = PtInRect(&windowRect, mouseCursor) != FALSE;
                     bool pinned = Wh_GetIntValue(L"PinnedExpanded", 0) != 0;
 
+                    // Subtract the rendering padding offset (28.0f, 22.0f) so that the click coordinates
+                    // align 100% perfectly with the unscaledRect rendering coordinate space.
+                    float pillClickX = clickX - 28.0f;
+                    float pillClickY = clickY - 22.0f;
+
                     float scale = (hover || pinned) ? 1.025f : 1.0f;
                     float topY = 12.0f * scale;
                     float btnSize = 22.0f * scale;
@@ -4326,20 +4331,20 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                     float addBottom = topY + btnSize;
 
                     // 1. Settings button (gear) click
-                    if (clickX >= gearLeft && clickX <= gearRight && clickY >= gearTop && clickY <= gearBottom) {
+                    if (pillClickX >= gearLeft && pillClickX <= gearRight && pillClickY >= gearTop && pillClickY <= gearBottom) {
                         ::OpenSettingsDialog(hwnd);
                         return 0;
                     }
 
                     // 2. Edit button (minus / check) click
-                    if (clickX >= editLeft && clickX <= editRight && clickY >= editTop && clickY <= editBottom) {
+                    if (pillClickX >= editLeft && pillClickX <= editRight && pillClickY >= editTop && pillClickY <= editBottom) {
                         g_toolsEditMode = !g_toolsEditMode;
                         g_layoutDirty = true;
                         return 0;
                     }
 
                     // 3. Add button (plus) click
-                    if (clickX >= addLeft && clickX <= addRight && clickY >= addTop && clickY <= addBottom) {
+                    if (pillClickX >= addLeft && pillClickX <= addRight && pillClickY >= addTop && pillClickY <= addBottom) {
                         HMENU menu = CreatePopupMenu();
                         std::vector<std::wstring> availableToAdd;
                         int idx = 0;
@@ -4384,12 +4389,12 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                         float cardTop = y - 3.0f * scale;
                         float cardBottom = y + cardH - 3.0f * scale;
 
-                        if (clickX >= x && clickX <= x + cardW && clickY >= cardTop && clickY <= cardBottom) {
+                        if (pillClickX >= x && pillClickX <= x + cardW && pillClickY >= cardTop && pillClickY <= cardBottom) {
                             if (g_toolsEditMode) {
                                 // Check if clicked the red deletion badge at top-right of the card
                                 float bx = (x + cardW) - 10.0f * scale;
                                 float by = cardTop + 10.0f * scale;
-                                float distBadgeSq = (clickX - bx) * (clickX - bx) + (clickY - by) * (clickY - by);
+                                float distBadgeSq = (pillClickX - bx) * (pillClickX - bx) + (pillClickY - by) * (pillClickY - by);
                                 if (distBadgeSq <= 12.0f * 12.0f * scale * scale) { // Generous hit target
                                     g_activeTools.erase(g_activeTools.begin() + i);
                                     SaveToolsList();
@@ -4745,21 +4750,12 @@ DWORD WINAPI RenderThreadProc(void*) {
             if (isHoverExpanded || pinned || recentArtChange) {
                 int tab = g_idleTab % 5;
                 if (tab < 0) tab += 5;
-                if (tab == 1) { // Calendar
+                if (tab == 0) { // Media
+                    primary.width = 380.0f * g_settings.sizeScale;
+                    primary.height = 184.0f * g_settings.sizeScale;
+                } else { // Calendar (tab == 1), Weather (tab == 2), System Status (tab == 3), Tools Tray (tab == 4)
                     primary.width = 420.0f * g_settings.sizeScale;
                     primary.height = 220.0f * g_settings.sizeScale;
-                } else if (tab == 2) { // Weather
-                    primary.width = 380.0f * g_settings.sizeScale;
-                    primary.height = 184.0f * g_settings.sizeScale;
-                } else if (tab == 3) { // System Status
-                    primary.width = 410.0f * g_settings.sizeScale;
-                    primary.height = 176.0f * g_settings.sizeScale;
-                } else if (tab == 4) { // Tools Tray
-                    primary.width = 420.0f * g_settings.sizeScale;
-                    primary.height = 202.0f * g_settings.sizeScale;
-                } else { // Media (tab == 0)
-                    primary.width = 380.0f * g_settings.sizeScale;
-                    primary.height = 184.0f * g_settings.sizeScale;
                 }
             }
         }
