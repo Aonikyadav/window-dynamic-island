@@ -1,3 +1,27 @@
+#pragma once
+
+#include <d2d1.h>
+#include <dwrite.h>
+#include <wrl/client.h>
+#include <string>
+#include <vector>
+
+using Microsoft::WRL::ComPtr;
+
+struct Settings;
+struct SharedState;
+
+struct ToolItem {
+    std::wstring id;
+    std::wstring name;
+    std::wstring icon;
+    std::wstring cmd;
+};
+
+const ToolItem* FindToolById(const std::wstring& toolId);
+extern std::vector<std::wstring> g_activeTools;
+extern bool g_toolsEditMode;
+
 class Renderer {
    public:
     bool Initialize(HWND hwnd) {
@@ -393,7 +417,7 @@ class Renderer {
         DrawSoftShadow(rect, radius);
 
         D2D1_ROUNDED_RECT pill = D2D1::RoundedRect(rect, radius, radius);
-        DrawPillSurface(rect, radius, activity.kind, settings.w11Style);
+        DrawPillSurface(rect, radius, activity.kind, settings.w11Style, settings.colorTheme);
 
         if (activity.kind == IslandKind::Progress) {
             DrawProgressRing(rect, state.progress.percent);
@@ -609,7 +633,7 @@ class Renderer {
         }
     }
 
-    void DrawPillSurface(D2D1_RECT_F rect, float radius, IslandKind kind, bool w11Style) {
+    void DrawPillSurface(D2D1_RECT_F rect, float radius, IslandKind kind, bool w11Style, int colorTheme) {
         if (tintBrush_) {
             target_->FillRoundedRectangle(D2D1::RoundedRect(rect, radius, radius),
                                           tintBrush_.Get());
@@ -625,7 +649,7 @@ class Renderer {
         }
 
         // Theme-specific borders
-        if (g_settings.colorTheme == 7) {
+        if (colorTheme == 7) {
             // Glassmorphism: dual-layer bright glowing border for premium glass look
             ComPtr<ID2D1SolidColorBrush> border;
             target_->CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.38f), &border);
@@ -641,7 +665,7 @@ class Renderer {
                     D2D1::RectF(rect.left - 0.5f, rect.top - 0.5f, rect.right + 0.5f, rect.bottom + 0.5f),
                     radius, radius), glowBorder.Get(), 2.0f);
             }
-        } else if (g_settings.colorTheme == 1 || g_settings.colorTheme == 10) {
+        } else if (colorTheme == 1 || colorTheme == 10) {
             // OLED / AMOLED Black: Crisp solid dark grey border outline (no transparency)
             ComPtr<ID2D1SolidColorBrush> border;
             target_->CreateSolidColorBrush(D2D1::ColorF(0.180f, 0.180f, 0.200f, 1.0f), &border); // #2E2E33
@@ -650,7 +674,7 @@ class Renderer {
                     D2D1::RectF(rect.left + 0.5f, rect.top + 0.5f, rect.right - 0.5f, rect.bottom - 0.5f),
                     radius, radius), border.Get(), 1.0f);
             }
-        } else if (g_settings.colorTheme == 8) {
+        } else if (colorTheme == 8) {
             // Cyberpunk: dual-tone Neon Cyan and Neon Purple outline glow
             ComPtr<ID2D1SolidColorBrush> borderCyan;
             target_->CreateSolidColorBrush(D2D1::ColorF(0.0f, 1.0f, 1.0f, 0.70f), &borderCyan);
@@ -665,7 +689,7 @@ class Renderer {
                     D2D1::RectF(rect.left + 1.2f, rect.top + 1.2f, rect.right - 1.2f, rect.bottom - 1.2f),
                     radius, radius), borderPurple.Get(), 0.8f);
             }
-        } else if (g_settings.colorTheme == 11) {
+        } else if (colorTheme == 11) {
             // Holographic AI: tech Neon Cyan outline
             ComPtr<ID2D1SolidColorBrush> borderCyan;
             target_->CreateSolidColorBrush(D2D1::ColorF(0.0f, 0.898f, 1.0f, 0.50f), &borderCyan);
@@ -674,7 +698,7 @@ class Renderer {
                     D2D1::RectF(rect.left + 0.5f, rect.top + 0.5f, rect.right - 0.5f, rect.bottom - 0.5f),
                     radius, radius), borderCyan.Get(), 1.0f);
             }
-        } else if (w11Style || g_settings.colorTheme == 5) {
+        } else if (w11Style || colorTheme == 5) {
             // Windows 11 Fluent style: white 15% opacity subtle border
             ComPtr<ID2D1SolidColorBrush> border;
             target_->CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.15f * settingsOpacity_), &border);
@@ -752,11 +776,11 @@ class Renderer {
         return (h + 6) % 7;
     }
 
-    void DrawCard(D2D1_RECT_F rect, float scale, D2D1_COLOR_F baseColor, float bgOpacity = 0.05f, float borderOpacity = 0.12f) {
+    void DrawCard(D2D1_RECT_F rect, float scale, D2D1_COLOR_F baseColor, int colorTheme, float bgOpacity = 0.05f, float borderOpacity = 0.12f) {
         // 1. Shadows (to create a floating appearance)
         ComPtr<ID2D1SolidColorBrush> shadowBrush;
-        int shadowLayers = (g_settings.colorTheme == 1 || g_settings.colorTheme == 10 || g_settings.colorTheme == 7) ? 5 : 3;
-        float shadowAlphaBase = (g_settings.colorTheme == 7) ? 0.05f : 0.04f;
+        int shadowLayers = (colorTheme == 1 || colorTheme == 10 || colorTheme == 7) ? 5 : 3;
+        float shadowAlphaBase = (colorTheme == 7) ? 0.05f : 0.04f;
         for (int i = 1; i <= shadowLayers; ++i) {
             float offset = static_cast<float>(i) * 0.9f * scale;
             D2D1_RECT_F shadowRect = D2D1::RectF(rect.left - offset, rect.top - offset + 1.2f * scale, rect.right + offset, rect.bottom + offset + 1.2f * scale);
@@ -769,10 +793,10 @@ class Renderer {
         // 2. Card Background
         ComPtr<ID2D1SolidColorBrush> cardBg;
         D2D1_COLOR_F bgCol = baseColor;
-        if (g_settings.colorTheme == 1 || g_settings.colorTheme == 10) {
+        if (colorTheme == 1 || colorTheme == 10) {
             // OLED/AMOLED: Solid charcoal grey for cards against pure opaque black background
             bgCol = D2D1::ColorF(0.082f, 0.082f, 0.090f, 1.0f); // #151517
-        } else if (g_settings.colorTheme == 7) {
+        } else if (colorTheme == 7) {
             // Glassmorphism: Frosted white card base
             bgCol = D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.12f);
         } else {
@@ -786,10 +810,10 @@ class Renderer {
         // 3. Card Border / Separators
         ComPtr<ID2D1SolidColorBrush> cardBorder;
         D2D1_COLOR_F borderCol = baseColor;
-        if (g_settings.colorTheme == 1 || g_settings.colorTheme == 10) {
+        if (colorTheme == 1 || colorTheme == 10) {
             // OLED/AMOLED: Crisp solid gray separator border
             borderCol = D2D1::ColorF(0.180f, 0.180f, 0.200f, 1.0f); // #2E2E33
-        } else if (g_settings.colorTheme == 7) {
+        } else if (colorTheme == 7) {
             // Glassmorphism: Soft glowing borders
             borderCol = D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.28f);
         } else {
@@ -801,7 +825,7 @@ class Renderer {
         }
 
         // 4. Subtle reflections and top-light highlights for Glassmorphism
-        if (g_settings.colorTheme == 7) {
+        if (colorTheme == 7) {
             ComPtr<ID2D1SolidColorBrush> highlightBrush;
             target_->CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.25f), &highlightBrush);
             if (highlightBrush) {
@@ -812,8 +836,8 @@ class Renderer {
         }
     }
 
-    void DrawSystemCard(D2D1_RECT_F cr, const wchar_t* title, const std::wstring& valueStr, int progressPercent, const wchar_t* emoji, D2D1_COLOR_F baseColor, float scale) {
-        DrawCard(cr, scale, baseColor, 0.05f, 0.12f);
+    void DrawSystemCard(D2D1_RECT_F cr, const wchar_t* title, const std::wstring& valueStr, int progressPercent, const wchar_t* emoji, D2D1_COLOR_F baseColor, float scale, int colorTheme) {
+        DrawCard(cr, scale, baseColor, colorTheme, 0.05f, 0.12f);
 
         float iconCX = cr.left + 20.0f * scale;
         float iconCY = cr.top + 28.0f * scale;
@@ -873,18 +897,18 @@ class Renderer {
         // Card 1: CPU
         DrawSystemCard(D2D1::RectF(startX, row1Top, startX + cardW, row1Top + cardH),
                        L"CPU", std::to_wstring(state.system.cpuPercent) + L"%", state.system.cpuPercent,
-                       L"\x2699\xFE0F", D2D1::ColorF(1.0f, 0.45f, 0.0f, 1.0f), scale);
+                       L"\x2699\xFE0F", D2D1::ColorF(1.0f, 0.45f, 0.0f, 1.0f), scale, settings.colorTheme);
 
         // Card 2: RAM
         DrawSystemCard(D2D1::RectF(startX + cardW + gapX, row1Top, startX + cardW + gapX + cardW, row1Top + cardH),
                        L"RAM", std::to_wstring(state.system.memoryPercent) + L"%", state.system.memoryPercent,
-                       L"\xD83D\xDCBE", D2D1::ColorF(0.0f, 0.55f, 1.0f, 1.0f), scale);
+                       L"\xD83D\xDCBE", D2D1::ColorF(0.0f, 0.55f, 1.0f, 1.0f), scale, settings.colorTheme);
 
         // Card 3: GPU
         int gpuVal = state.system.gpuPercent >= 0 ? state.system.gpuPercent : 0;
         DrawSystemCard(D2D1::RectF(startX + (cardW + gapX) * 2.0f, row1Top, startX + (cardW + gapX) * 2.0f + cardW, row1Top + cardH),
                        L"GPU", std::to_wstring(gpuVal) + L"%", gpuVal,
-                       L"\xD83C\xDFAE", D2D1::ColorF(0.7f, 0.35f, 1.0f, 1.0f), scale);
+                       L"\xD83C\xDFAE", D2D1::ColorF(0.7f, 0.35f, 1.0f, 1.0f), scale, settings.colorTheme);
 
         // Card 4: Battery
         D2D1_COLOR_F batColor = D2D1::ColorF(0.15f, 0.82f, 0.35f, 1.0f);
@@ -896,21 +920,21 @@ class Renderer {
         std::wstring batVal = state.battery.percent >= 0 ? std::to_wstring(state.battery.percent) + L"%" : L"N/A";
         DrawSystemCard(D2D1::RectF(startX, row2Top, startX + cardW, row2Top + cardH),
                        L"BAT", batVal, state.battery.percent >= 0 ? state.battery.percent : 0,
-                       L"\xD83D\xDD0B", batColor, scale);
+                       L"\xD83D\xDD0B", batColor, scale, settings.colorTheme);
 
         // Card 5: Network Status
         std::wstring netVal = state.system.internetConnected ? L"Connected" : L"Offline";
         D2D1_COLOR_F netColor = state.system.internetConnected ? D2D1::ColorF(0.0f, 0.78f, 0.82f, 1.0f) : D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f);
         DrawSystemCard(D2D1::RectF(startX + cardW + gapX, row2Top, startX + cardW + gapX + cardW, row2Top + cardH),
                        L"NET", netVal, state.system.internetConnected ? 100 : 0,
-                       L"\xD83C\xDF10", netColor, scale);
+                       L"\xD83C\xDF10", netColor, scale, settings.colorTheme);
 
         // Card 6: Bluetooth Status
         std::wstring btVal = state.system.bluetoothOn ? L"Enabled" : L"Disabled";
         D2D1_COLOR_F btColor = state.system.bluetoothOn ? D2D1::ColorF(1.0f, 0.2f, 0.45f, 1.0f) : D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f);
         DrawSystemCard(D2D1::RectF(startX + (cardW + gapX) * 2.0f, row2Top, startX + (cardW + gapX) * 2.0f + cardW, row2Top + cardH),
                        L"BT", btVal, state.system.bluetoothOn ? 100 : 0,
-                       L"\xD83D\xDCF6", btColor, scale);
+                       L"\xD83D\xDCF6", btColor, scale, settings.colorTheme);
     }
 
     void DrawCalendarDashboard(const SharedState& state, D2D1_RECT_F rect, const Settings& settings, double now, float scale, SYSTEMTIME& local) {
@@ -920,7 +944,7 @@ class Renderer {
 
         // Left Card: Date and Time Card
         D2D1_RECT_F leftCard = D2D1::RectF(rect.left + 20.0f * scale, rect.top + 38.0f * scale, rect.left + 192.0f * scale, rect.bottom - 16.0f * scale);
-        DrawCard(leftCard, scale, D2D1::ColorF(0.92f, 0.16f, 0.16f, 1.0f), 0.05f, 0.12f);
+        DrawCard(leftCard, scale, D2D1::ColorF(0.92f, 0.16f, 0.16f, 1.0f), settings.colorTheme, 0.05f, 0.12f);
 
         // Calendar Icon (colored font)
         D2D1_RECT_F calIconRect = D2D1::RectF(leftCard.left + 14.0f * scale, leftCard.top + 14.0f * scale, leftCard.left + 44.0f * scale, leftCard.top + 44.0f * scale);
@@ -943,7 +967,7 @@ class Renderer {
 
         // Right Card: Month Grid
         D2D1_RECT_F rightCard = D2D1::RectF(rect.left + 204.0f * scale, rect.top + 38.0f * scale, rect.right - 20.0f * scale, rect.bottom - 16.0f * scale);
-        DrawCard(rightCard, scale, D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f), 0.04f, 0.1f);
+        DrawCard(rightCard, scale, D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f), settings.colorTheme, 0.04f, 0.1f);
 
         const float gridStart = rightCard.left + 12.0f * scale;
         const float gridTop = rightCard.top + 16.0f * scale;
@@ -1008,7 +1032,7 @@ class Renderer {
 
         // Left Card: Temp, City, Condition, High/Low
         D2D1_RECT_F leftCard = D2D1::RectF(rect.left + 20.0f * scale, rect.top + 38.0f * scale, rect.left + 192.0f * scale, rect.bottom - 16.0f * scale);
-        DrawCard(leftCard, scale, D2D1::ColorF(1.0f, 0.76f, 0.03f, 1.0f), 0.05f, 0.12f);
+        DrawCard(leftCard, scale, D2D1::ColorF(1.0f, 0.76f, 0.03f, 1.0f), settings.colorTheme, 0.05f, 0.12f);
 
         // Location City Name
         D2D1_RECT_F cityRect = D2D1::RectF(leftCard.left + 12.0f * scale, leftCard.top + 10.0f * scale, leftCard.right - 12.0f * scale, leftCard.top + 28.0f * scale);
@@ -1044,7 +1068,7 @@ class Renderer {
         float gapY = 10.0f * scale;
 
         auto DrawWeatherMiniCard = [&](D2D1_RECT_F cr, const wchar_t* title, const std::wstring& value, const wchar_t* emoji, D2D1_COLOR_F baseColor) {
-            DrawCard(cr, scale, baseColor, 0.05f, 0.12f);
+            DrawCard(cr, scale, baseColor, settings.colorTheme, 0.05f, 0.12f);
 
             D2D1_RECT_F tr = D2D1::RectF(cr.left + 8.0f * scale, cr.top + 8.0f * scale, cr.right - 8.0f * scale, cr.top + 24.0f * scale);
             std::wstring fullTitle = std::wstring(emoji) + L" " + title;
@@ -1157,10 +1181,7 @@ class Renderer {
 
         // Lambda to draw a single card
         auto DrawSingleCard = [&](const std::wstring& toolId, D2D1_RECT_F cardRect, bool isHovered, bool isPlaceholder) {
-            const ToolItem* item = nullptr;
-            for (const auto& t : kAllTools) {
-                if (t.id == toolId) { item = &t; break; }
-            }
+            const ToolItem* item = FindToolById(toolId);
             if (!item) return;
 
             if (isPlaceholder) {
@@ -1189,7 +1210,7 @@ class Renderer {
                 }
             }
 
-            DrawCard(cardRect, scale, lerpedAccent_, isHovered ? 0.08f : 0.05f, isHovered ? 0.22f : 0.12f);
+            DrawCard(cardRect, scale, lerpedAccent_, settings.colorTheme, isHovered ? 0.08f : 0.05f, isHovered ? 0.22f : 0.12f);
 
             // Large colorful icon
             D2D1_RECT_F iconRect = D2D1::RectF(cardRect.left, cardRect.top + 8.0f * scale, cardRect.right, cardRect.top + 38.0f * scale);

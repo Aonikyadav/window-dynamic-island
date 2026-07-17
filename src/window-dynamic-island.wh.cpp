@@ -3559,14 +3559,9 @@ static bool g_timerAlertActive = false;
 static ULONGLONG g_timerAlertStartTick = 0;
 
 // --- Customizable Tools Tray Dashboard ---
-struct ToolItem {
-    std::wstring id;
-    std::wstring name;
-    std::wstring icon;
-    std::wstring cmd;
-};
+#include "dynamic_island_ui.h"
 
-static const ToolItem kAllTools[] = {
+const ToolItem kAllTools[] = {
     { L"calc", L"Calculator", L"\xD83E\xDDEE", L"calc.exe" },
     { L"notepad", L"Notes", L"\xD83D\xDCDD", L"notepad.exe" },
     { L"clipboard", L"Clipboard", L"\xD83D\xDCCB", L"clipboard_history" },
@@ -3579,8 +3574,15 @@ static const ToolItem kAllTools[] = {
     { L"timer", L"Set Timer", L"\x23F1\xFE0F", L"explorer.exe ms-clock:" }
 };
 
-static std::vector<std::wstring> g_activeTools = { L"calc", L"notepad", L"clipboard", L"screenshot", L"explorer", L"settings", L"taskmgr", L"cmd", L"browser" };
-static bool g_toolsEditMode = false;
+std::vector<std::wstring> g_activeTools = { L"calc", L"notepad", L"clipboard", L"screenshot", L"explorer", L"settings", L"taskmgr", L"cmd", L"browser" };
+bool g_toolsEditMode = false;
+
+const ToolItem* FindToolById(const std::wstring& toolId) {
+    for (const auto& t : kAllTools) {
+        if (t.id == toolId) return &t;
+    }
+    return nullptr;
+}
 
 static void LoadToolsList() {
     wchar_t buffer[512] = {};
@@ -3606,7 +3608,7 @@ static void SaveToolsList() {
 }
 
 
-#include "dynamic_island_ui.h"
+// UI drawing code already included above
 
 Activity ActivityForKind(IslandKind kind, const Settings& settings, const SharedState& state) {
     Activity activity;
