@@ -4660,7 +4660,7 @@ DWORD WINAPI RenderThreadProc(void*) {
         const std::vector<IslandKind> kinds = ChooseActivities(snapshot, g_settings, now);
         Activity primary = ActivityForKind(kinds[0], g_settings, snapshot);
         std::optional<Activity> secondary;
-        if (kinds.size() >= 2 && g_settings.splitMode) {
+        if (kinds.size() >= 2 && g_settings.splitMode && kinds[0] != IslandKind::Device && kinds[1] != IslandKind::Device) {
             secondary = ActivityForKind(kinds[1], g_settings, snapshot);
             // Adjust widths for Split mode!
             primary.width = 62.0f * g_settings.sizeScale;
