@@ -22,6 +22,12 @@ A smooth, interactive overlay for your desktop, inspired by Apple's Dynamic Isla
 | :---: | :---: |
 | <img src="previews/camera-detected.png" width="200" /> | <img src="previews/mic-detected.png" width="200" /> |
 
+### Advanced Features & Settings
+
+| Speech-to-Text Dictation | Voice Assistant (Jarvis) | Desktop Settings Dialog |
+| :---: | :---: | :---: |
+| <img src="previews/speech-to-text.png" width="200" alt="STT Dictation Preview Slot" /> | <img src="previews/voice-assistant.png" width="200" alt="Voice Assistant Preview Slot" /> | <img src="previews/settings-dialog.png" width="200" alt="Settings Dialog Preview Slot" /> |
+
 ---
 
 ## ✨ What it does
