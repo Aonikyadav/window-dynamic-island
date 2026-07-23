@@ -235,6 +235,7 @@ The Dynamic Island intelligently expands to display context-aware dashboards. Yo
 #include <pdh.h>
 #include <pdhmsg.h>
 #pragma comment(lib, "pdh.lib")
+#include <tlhelp32.h>
 
 #include <algorithm>
 #include <array>
@@ -256,6 +257,7 @@ The Dynamic Island intelligently expands to display context-aware dashboards. Yo
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Media.Control.h>
+#include <winrt/Windows.Media.SpeechRecognition.h>
 #include <winrt/Windows.Storage.Streams.h>
 #if __has_include(<winrt/Windows.UI.Notifications.Management.h>) && \
     __has_include(<winrt/Windows.UI.Notifications.h>)
@@ -269,6 +271,18 @@ The Dynamic Island intelligently expands to display context-aware dashboards. Yo
 
 using Microsoft::WRL::ComPtr;
 using namespace std::chrono_literals;
+
+#include "../new_feature/contracts.h"
+#include "../new_feature/event_bus.h"
+#include "../new_feature/audio_capture.h"
+#include "../new_feature/stt_service.h"
+#include "../new_feature/intent_router.h"
+#include "../new_feature/skills.h"
+#include "../new_feature/ai_service.h"
+#include "../new_feature/tts_service.h"
+#include "../new_feature/plugin_manager.h"
+#include "../new_feature/context_manager.h"
+
 
 #ifdef STANDALONE_APP
 #pragma comment(lib, "ole32.lib")
@@ -315,6 +329,9 @@ extern "C" {
         OutputDebugStringW(L"[DynamicIsland] ");
         OutputDebugStringW(buffer);
         OutputDebugStringW(L"\n");
+
+        static std::mutex logMtx;
+        std::lock_guard<std::mutex> lock(logMtx);
 
         wchar_t logPath[MAX_PATH] = {};
         GetModuleFileNameW(nullptr, logPath, MAX_PATH);
@@ -408,6 +425,7 @@ constexpr UINT WM_APP_LAYOUT_CHANGED = WM_APP + 0x442;
 constexpr UINT WM_APP_NEW_EVENT = WM_APP + 0x443;
 constexpr float kRenderPadX = 28.0f;
 constexpr float kRenderPadY = 22.0f;
+static int s_dragStartX = 0;
 
 enum class IslandKind {
     Idle,
@@ -421,6 +439,8 @@ enum class IslandKind {
     Device,
     Split,
     Timer,
+    VoiceAssistant,
+    SpeechToText,
 };
 
 enum class Position {
@@ -478,6 +498,10 @@ struct Settings {
     D2D1_COLOR_F textPrimaryColor = D2D1::ColorF(0.969f, 0.969f, 0.969f, 1.0f); // #F7F7F7
     D2D1_COLOR_F textSecondaryColor = D2D1::ColorF(0.533f, 0.533f, 0.533f, 1.0f); // #888888
     int colorTheme = 0;
+    bool assistantEnabled = true;
+    bool voiceWakeWordEnabled = true;
+    std::wstring voiceWakeWord = L"hey jarvis";
+    bool enableMiniPillNav = true;
 };
 
 struct BitmapPixels {
@@ -605,6 +629,21 @@ struct WeatherSnapshot {
     double lastUpdated = 0.0;
 };
 
+struct VoiceAssistantSnapshot {
+    bool active = false;
+    int activeState = 0; // 0 = Idle, 1 = Listening, 2 = Processing, 3 = Success, 4 = Error
+    std::wstring textPrompt;
+    std::wstring textFeedback;
+    double expiresAt = 0.0;
+};
+
+struct SpeechToTextSnapshot {
+    bool active = false;
+    bool recording = false;
+    std::wstring transcript;
+    uint32_t durationSec = 0;
+};
+
 struct SharedState {
     MediaSnapshot media;
     ClipboardSnapshot clipboard;
@@ -619,6 +658,8 @@ struct SharedState {
     std::array<float, 48> waveform{};
     size_t waveformWrite = 0;
     bool muted = false;
+    VoiceAssistantSnapshot voiceAssistant;
+    SpeechToTextSnapshot speechToText;
 };
 
 struct SpringValue {
@@ -659,6 +700,7 @@ HANDLE g_weatherThread = nullptr;
 HANDLE g_notificationThread = nullptr;
 std::atomic<bool> g_running = false;
 std::atomic<int> g_idleTab = 0;
+std::atomic<int> g_idleMiniPillIndex = 0;
 std::atomic<bool> g_layoutDirty = true;
 std::atomic<bool> g_clickExpanded = false;
 std::atomic<int> g_pressedMediaButton = -1;
@@ -668,9 +710,35 @@ FILETIME g_prevUserTime = {};
 UINT g_shellHookMessage = 0;
 bool g_volumeInitialized = false;
 std::atomic<double> g_lastNudgeTime = 0.0;
+std::atomic<double> g_lastInteractionTime{0.0};
 double g_deviceConnectedAt = -999.0;  // timestamp of last BT device connect (to suppress spurious volume change)
 double g_suppressVolumeUntil = 0.0;   // timestamp until which volume changes are suppressed
 std::wstring g_lastBtName;            // name of the last active Bluetooth device
+
+static bool g_voiceRecording = false;
+static bool g_wasMediaPlaying = false;
+static std::atomic<bool> g_voiceAssistantActive{ false };
+static ai::WasapiAudioCapture* g_voiceRecorder = nullptr;
+static ai::WinrtSpeechToText* g_sttService = nullptr;
+static ai::SapiTextToSpeech* g_ttsService = nullptr;
+static ai::WakeWordListener* g_wakeWordListener = nullptr;
+static bool g_wakeWordActiveState = false;
+static ai::IntentRouter* g_intentRouter = nullptr;
+static ai::PluginManager* g_pluginManager = nullptr;
+static ai::OpenRouterAIService* g_aiService = nullptr;
+static ai::ContextManager* g_contextManager = nullptr;
+static ai::SttLiveDictationService* g_sttLiveService = nullptr;
+static HWND g_hwndSttPopover = nullptr;
+static bool g_sttModeActive = false;
+static ULONGLONG g_sttStartTick = 0;
+
+static bool g_sttPaused = false;
+void UpdateSttPopoverPos();
+void ShowSttPopoverWindow();
+void StartSpeechToTextMode();
+void StopSpeechToTextMode();
+void PauseSpeechToTextMode();
+void ResumeSpeechToTextMode();
 
 constexpr GUID kSubTypeIeeeFloat = {
     0x00000003,
@@ -776,6 +844,7 @@ void UpdateWindowBlur(HWND hwnd, int themeIndex);
 
 void LoadSettings() {
     LoadToolsList();
+    g_idleMiniPillIndex = Wh_GetIntValue(L"LastMiniPillIndex", 0);
     Settings next;
 
     const std::wstring position = GetStringSettingCopy(L"Appearance.Position");
@@ -831,12 +900,14 @@ void LoadSettings() {
     next.showMetricText = Wh_GetIntSetting(L"Modules.ShowMetricText") != 0;
     next.weatherCity = GetStringSettingCopy(L"Modules.WeatherCity");
     next.weatherFahrenheit = Wh_GetIntSetting(L"Modules.WeatherFahrenheit") != 0;
+    next.enableMiniPillNav = Wh_GetIntSetting(L"Modules.EnableMiniPillNav") != 0;
+    next.assistantEnabled = Wh_GetIntSetting(L"Assistant.EnableAssistant") != 0;
+    next.voiceWakeWordEnabled = next.assistantEnabled && (Wh_GetIntSetting(L"VoiceAssistant.EnableWakeWord") != 0);
     const std::wstring hideSec = GetStringSettingCopy(L"Appearance.AutoHideIdleSeconds");
     next.autoHideIdleSeconds = hideSec.empty() ? 0 : _wtoi(hideSec.c_str());
     next.unhideOnHover = Wh_GetIntSetting(L"Appearance.UnhideOnHover") != 0;
     next.alwaysOnTop = Wh_GetIntSetting(L"Appearance.AlwaysOnTop") != 0;
-    const int localExpandOnHover = Wh_GetIntValue(L"ExpandOnHoverOverride", -1);
-    next.expandOnHover = localExpandOnHover >= 0 ? (localExpandOnHover != 0) : (Wh_GetIntSetting(L"Appearance.ExpandOnHover") != 0);
+    next.expandOnHover = Wh_GetIntSetting(L"Appearance.ExpandOnHover") != 0;
     next.autoDpiScale = Wh_GetIntSetting(L"Appearance.AutoDpiScale") != 0;
     next.offsetX = Wh_GetIntSetting(L"Appearance.OffsetX");
     next.offsetY = Wh_GetIntSetting(L"Appearance.OffsetY");
@@ -847,6 +918,12 @@ void LoadSettings() {
     next.startWithWindows = Wh_GetIntSetting(L"Appearance.StartWithWindows") != 0;
     if (next.startWithWindows != IsStartupRegistryEnabled()) {
         SetStartupRegistry(next.startWithWindows);
+    }
+
+    next.voiceWakeWordEnabled = Wh_GetIntSetting(L"VoiceAssistant.EnableWakeWord") != 0;
+    const std::wstring wakeWord = GetStringSettingCopy(L"VoiceAssistant.WakeWord");
+    if (!wakeWord.empty()) {
+        next.voiceWakeWord = wakeWord;
     }
 
     std::wstring mon = GetStringSettingCopy(L"Appearance.TargetMonitor");
@@ -901,13 +978,24 @@ void LoadSettings() {
     }
 
     bool cityChanged = next.weatherCity != g_settings.weatherCity;
+    bool wakeWordSettingChanged = (next.voiceWakeWordEnabled != g_settings.voiceWakeWordEnabled) ||
+                                  (next.voiceWakeWord != g_settings.voiceWakeWord);
+
     g_settings = next;
+    g_lastInteractionTime.store(NowSeconds());
     g_layoutDirty = true;
     if (g_hwnd) {
         UpdateWindowBlur(g_hwnd, next.colorTheme);
     }
     if (cityChanged && g_settingsChangedEvent) {
         SetEvent(g_settingsChangedEvent);
+    }
+
+    if (g_wakeWordListener && wakeWordSettingChanged) {
+        g_wakeWordListener->Stop();
+        if (g_settings.voiceWakeWordEnabled && !g_voiceAssistantActive) {
+            g_wakeWordListener->Start(g_settings.voiceWakeWord);
+        }
     }
 }
 
@@ -1801,6 +1889,7 @@ DWORD WINAPI MediaThreadProc(void*) {
                 }
             }
         } catch (...) {
+            manager = nullptr;
             if (!loggedUnavailable) {
                 Wh_Log(L"WinRT media session unavailable; media module will fall back to idle.");
                 loggedUnavailable = true;
@@ -3389,6 +3478,7 @@ void ShowContextMenu(HWND hwnd, POINT screenPoint) {
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     // Quick actions
     const bool nightModeActive = (Wh_GetIntValue(L"PillOpacityOverride", -1) == 40);
+    AppendMenuW(menu, MF_STRING, 50, L"\xD83C\xDF99\xFE0F Speech to Text Converter...");
     AppendMenuW(menu, MF_STRING | (nightModeActive ? MF_CHECKED : 0), 27, nightModeActive ? L"Night Mode \u2713" : L"Night Mode");
     AppendMenuW(menu, MF_STRING, 25, L"Refresh Weather Now");
     AppendMenuW(menu, MF_STRING, 26, L"Reset All Overrides");
@@ -3406,6 +3496,9 @@ void ShowContextMenu(HWND hwnd, POINT screenPoint) {
     DestroyMenu(menu);
 
     switch (cmd) {
+        case 50:
+            StartSpeechToTextMode();
+            break;
         case 1:
             DismissTransientState();
             break;
@@ -3577,10 +3670,11 @@ const ToolItem kAllTools[] = {
     { L"taskmgr", L"Task Mgr", L"\xD83D\xDCCA", L"taskmgr.exe" },
     { L"cmd", L"Terminal", L"\xD83D\xDCBB", L"cmd.exe" },
     { L"browser", L"Browser", L"\xD83C\xDF10", L"explorer.exe http://www.google.com" },
-    { L"timer", L"Set Timer", L"\x23F1\xFE0F", L"explorer.exe ms-clock:" }
+    { L"timer", L"Set Timer", L"\x23F1\xFE0F", L"explorer.exe ms-clock:" },
+    { L"speechtotext", L"Speech to Text", L"\xD83C\xDF99\xFE0F", L"speech_to_text" }
 };
 
-std::vector<std::wstring> g_activeTools = { L"calc", L"notepad", L"clipboard", L"screenshot", L"explorer", L"settings", L"taskmgr", L"cmd", L"browser" };
+std::vector<std::wstring> g_activeTools = { L"speechtotext", L"calc", L"notepad", L"clipboard", L"screenshot", L"explorer", L"settings", L"taskmgr", L"cmd", L"browser" };
 bool g_toolsEditMode = false;
 
 const ToolItem* FindToolById(const std::wstring& toolId) {
@@ -3592,7 +3686,7 @@ const ToolItem* FindToolById(const std::wstring& toolId) {
 
 static void LoadToolsList() {
     wchar_t buffer[512] = {};
-    GetPrivateProfileStringW(L"Settings", L"Modules.ToolsTrayList", L"calc,notepad,clipboard,screenshot,explorer,settings,taskmgr,cmd,browser", buffer, 512, GetIniPath().c_str());
+    GetPrivateProfileStringW(L"Settings", L"Modules.ToolsTrayList", L"speechtotext,calc,notepad,clipboard,screenshot,explorer,settings,taskmgr,cmd,browser", buffer, 512, GetIniPath().c_str());
     g_activeTools.clear();
     std::wstring s = buffer;
     size_t pos = 0;
@@ -3602,6 +3696,12 @@ static void LoadToolsList() {
         s.erase(0, pos + 1);
     }
     if (!s.empty()) g_activeTools.push_back(s);
+
+    // Auto-migrate: Ensure "speechtotext" is in active tools list
+    if (std::find(g_activeTools.begin(), g_activeTools.end(), L"speechtotext") == g_activeTools.end()) {
+        g_activeTools.insert(g_activeTools.begin(), L"speechtotext");
+        SaveToolsList();
+    }
 }
 
 static void SaveToolsList() {
@@ -3662,6 +3762,20 @@ Activity ActivityForKind(IslandKind kind, const Settings& settings, const Shared
             activity.width = 190.0f;
             activity.height = 36.0f;
             break;
+        case IslandKind::VoiceAssistant:
+            if (state.voiceAssistant.activeState == 1) {
+                activity.width = 260.0f;
+            } else if (state.voiceAssistant.activeState == 3 || state.voiceAssistant.activeState == 4) {
+                activity.width = 280.0f;
+            } else {
+                activity.width = 180.0f;
+            }
+            activity.height = 36.0f;
+            break;
+        case IslandKind::SpeechToText:
+            activity.width = 240.0f;
+            activity.height = 36.0f;
+            break;
         case IslandKind::Idle:
         default:
             if (settings.autoHideIdleSeconds == -1 && !state.system.micActive && !state.system.cameraActive) {
@@ -3682,6 +3796,14 @@ Activity ActivityForKind(IslandKind kind, const Settings& settings, const Shared
 std::vector<IslandKind> ChooseActivities(const SharedState& state, const Settings& settings, double now) {
     std::vector<IslandKind> activities;
 
+    if (state.speechToText.active) {
+        activities.push_back(IslandKind::SpeechToText);
+        return activities;
+    }
+    if (state.voiceAssistant.active) {
+        activities.push_back(IslandKind::VoiceAssistant);
+        return activities; // Only show Voice Assistant, preventing Split Mode!
+    }
     if (state.clipboard.active && now < state.clipboard.expiresAt) {
         activities.push_back(IslandKind::Clipboard);
     }
@@ -3706,7 +3828,8 @@ std::vector<IslandKind> ChooseActivities(const SharedState& state, const Setting
     if (g_timerActive) {
         activities.push_back(IslandKind::Timer);
     }
-    if (settings.media && state.media.available) {
+
+    if (settings.media && state.media.available && !settings.enableMiniPillNav) {
         activities.push_back(IslandKind::Media);
     }
 
@@ -3724,8 +3847,190 @@ DWORD g_keyboardThreadId = 0;
 
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode == HC_ACTION) {
+        auto* kbd = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
+
+        if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
+            bool isCtrlDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000) ||
+                              (GetAsyncKeyState(VK_LCONTROL) & 0x8000) ||
+                              (GetAsyncKeyState(VK_RCONTROL) & 0x8000) ||
+                              (GetKeyState(VK_CONTROL) & 0x8000);
+            if (kbd->vkCode == VK_SPACE && isCtrlDown) {
+                // Stop any TTS speaking immediately — works even during wake-word session
+                if (g_ttsService) {
+                    g_ttsService->Stop();
+                }
+
+                if (!g_voiceRecording) {
+                    g_voiceRecording = true;
+
+                    // If a wake-word session is active, abort it cleanly before starting PTT
+                    if (g_voiceAssistantActive.exchange(true)) {
+                        // A session was already running (wake-word). Cancel its STT op.
+                        if (g_sttService) {
+                            // Cancel any active op so WaitForCompletion() returns immediately
+                            // StopListening is safe to call regardless of whether started.
+                            g_sttService->StopListening();
+                        }
+                    }
+
+                    // Stop Wake Word listener so it doesn't double-listen
+                    if (g_wakeWordListener) {
+                        g_wakeWordListener->Stop();
+                    }
+
+                    // Pause background media if playing
+                    {
+                        std::lock_guard lock(g_stateMutex);
+                        g_wasMediaPlaying = g_state.media.playing;
+                    }
+                    if (g_wasMediaPlaying) {
+                        keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0);
+                        keybd_event(VK_MEDIA_PLAY_PAUSE, 0, KEYEVENTF_KEYUP, 0);
+                    }
+
+                    {
+                        std::lock_guard lock(g_stateMutex);
+                        g_state.voiceAssistant.active = true;
+                        g_state.voiceAssistant.activeState = 1; // Listening
+                        g_state.voiceAssistant.textPrompt = L"";
+                        g_state.voiceAssistant.textFeedback = L"Listening...";
+                    }
+                    g_layoutDirty = true;
+                    if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+
+                    if (g_voiceRecorder) {
+                        g_voiceRecorder->StartRecording();
+                    }
+                    // Start WinRT STT listening (runs until StopListening() is called)
+                    if (g_sttService) {
+                        g_sttService->StartListening();
+                    }
+                }
+                return 1; // swallow the space key event
+            }
+        }
+
+        // 2. Intercept Keyup for Push-to-Talk Finish (Ctrl + Space release)
         if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) {
-            auto* kbd = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
+            if (kbd->vkCode == VK_SPACE) {
+                if (g_voiceRecording) {
+                    g_voiceRecording = false;
+
+                    // Stop WASAPI capture (used only for waveform visualization)
+                    if (g_voiceRecorder) {
+                        g_voiceRecorder->StopRecording();
+                    }
+
+                    {
+                        std::lock_guard lock(g_stateMutex);
+                        g_state.voiceAssistant.activeState = 2; // Processing
+                        g_state.voiceAssistant.textFeedback = L"Understanding...";
+                    }
+                    g_layoutDirty = true;
+                    if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+
+                    // Dispatch processing to background thread to avoid freezing the system hook!
+                    CreateThread(nullptr, 0, [](LPVOID) -> DWORD {
+                        try { winrt::init_apartment(winrt::apartment_type::multi_threaded); } catch (...) {}
+                        // Stop the WinRT STT engine and get transcribed text
+                        std::wstring text = L"";
+                        if (g_sttService) {
+                            text = g_sttService->StopListening();
+                        }
+
+                        ai::SkillResult skillRes;
+                        bool executed = false;
+
+                        if (text.empty()) {
+                            skillRes.success = false;
+                            skillRes.visualFeedback = L"Didn't catch that";
+                            skillRes.voiceFeedback = L"I didn't catch that. Hold Ctrl and Space, then speak clearly.";
+                            executed = true;
+                        }
+
+                        if (!executed) {
+                            // Show the recognized text immediately as feedback
+                            {
+                                std::lock_guard lock(g_stateMutex);
+                                g_state.voiceAssistant.textPrompt = text;
+                            }
+
+                            // Route intent locally — NO network/API calls
+                            ai::IntentResult res;
+                            if (g_intentRouter && g_contextManager) {
+                                res = g_intentRouter->Route(text, g_contextManager->GetContext());
+                            }
+
+                            if (res.intent.name == L"UNKNOWN") {
+                                // Unknown command — tell user what was heard and what to say
+                                skillRes.success = false;
+                                skillRes.visualFeedback = L"Unknown: " + text;
+                                skillRes.voiceFeedback = L"I heard: " + text + L". Try saying open, close, volume up, or mute.";
+                                executed = true;
+                            }
+
+                            if (!executed && g_pluginManager) {
+                                skillRes = g_pluginManager->Dispatch(res.intent);
+                                if (skillRes.success) {
+                                    executed = true;
+                                    // Remember last opened app for "close it" context
+                                    if (g_contextManager && res.intent.name == L"LAUNCH_APP") {
+                                        g_contextManager->SetLastOpenedApp(res.intent.target);
+                                    }
+                                }
+                            }
+
+                            // If skill returned failure (app not found, etc.) — no API fallback
+                            if (!executed) {
+                                executed = true; // mark done, show error
+                            }
+                        }
+
+
+                        {
+                            std::lock_guard lock(g_stateMutex);
+                            g_state.voiceAssistant.activeState = skillRes.success ? 3 : 4; // Success / Error
+                            g_state.voiceAssistant.textFeedback = skillRes.visualFeedback;
+                        }
+                        g_layoutDirty = true;
+                        if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+
+                        // Speak output synchronously to block thread and keep visual checkmark shown
+                        if (!skillRes.voiceFeedback.empty() && g_ttsService) {
+                            g_ttsService->Speak(skillRes.voiceFeedback);
+                        }
+
+                        // Maintain the Success checkmark / visual feedback state open for 1.5 seconds after speaking finishes
+                        Sleep(1500);
+
+                        // Resume background media if it was playing previously
+                        if (g_wasMediaPlaying) {
+                            keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0);
+                            keybd_event(VK_MEDIA_PLAY_PAUSE, 0, KEYEVENTF_KEYUP, 0);
+                            g_wasMediaPlaying = false;
+                        }
+
+                        {
+                            std::lock_guard lock(g_stateMutex);
+                            g_state.voiceAssistant.active = false;
+                            g_state.voiceAssistant.activeState = 0; // Idle
+                        }
+                        g_layoutDirty = true;
+                        if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+
+                        // Reset assistant active flag and restart continuous wake-word listener
+                        g_voiceAssistantActive = false;
+                        if (g_wakeWordListener && g_settings.voiceWakeWordEnabled) {
+                            g_wakeWordListener->Start(g_settings.voiceWakeWord);
+                        }
+
+                        return 0;
+                    }, nullptr, 0, nullptr);
+
+                    return 1; // swallow the space release
+                }
+            }
+
             if (kbd->vkCode == VK_CAPITAL || kbd->vkCode == VK_NUMLOCK) {
                 PostMessageW(g_hwnd, WM_APP_CAPSLOCK, kbd->vkCode, 0);
             }
@@ -3735,7 +4040,12 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
 }
 
 DWORD WINAPI KeyboardThreadProc(void*) {
-    g_keyboardHook = SetWindowsHookExW(WH_KEYBOARD_LL, LowLevelKeyboardProc, nullptr, 0);
+    g_keyboardHook = SetWindowsHookExW(WH_KEYBOARD_LL, LowLevelKeyboardProc, GetModuleHandleW(nullptr), 0);
+    if (!g_keyboardHook) {
+        Wh_Log(L"Failed to install keyboard hook. Error: %d", GetLastError());
+    } else {
+        Wh_Log(L"Keyboard hook installed successfully.");
+    }
     MSG msg;
     while (GetMessageW(&msg, nullptr, 0, 0)) {
         TranslateMessage(&msg);
@@ -3969,6 +4279,9 @@ bool ShowTimerPickerModal(HWND parent) {
 
 
 LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    if (msg == WM_MOUSEMOVE || msg == WM_LBUTTONDOWN || msg == WM_LBUTTONUP || msg == WM_RBUTTONUP || msg == WM_MOUSEWHEEL) {
+        g_lastInteractionTime.store(NowSeconds());
+    }
     switch (msg) {
         case WM_CREATE:
             AddClipboardFormatListener(hwnd);
@@ -4079,17 +4392,14 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                         TriggerNudge();
                     }).detach();
                 }
-            } // end if (wParam == 0x8000 || wParam == 0x8004)
+            }
             return 0;
         }
-
         case WM_CLIPBOARDUPDATE:
             if (g_settings.clipboard) {
                 CaptureClipboard(hwnd);
             }
             return 0;
-
-
 
         case WM_APP_LAYOUT_CHANGED:
             g_layoutDirty = true;
@@ -4099,6 +4409,7 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             {
                 int xPos = GET_X_LPARAM(lParam);
                 int yPos = GET_Y_LPARAM(lParam);
+                s_dragStartX = xPos;
                 
                 bool mediaActive = false;
                 {
@@ -4111,7 +4422,13 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                 const float height = static_cast<float>(clientRect.bottom - clientRect.top);
                 const float width = static_cast<float>(clientRect.right - clientRect.left);
 
-                if (mediaActive && height > 60.0f && (g_idleTab % 4) == 0) {
+                float collapsedThreshold = 55.0f * g_settings.sizeScale + 44.0f;
+                // Set capture for mini pill swipe dragging
+                if (height <= collapsedThreshold && g_settings.enableMiniPillNav) {
+                    SetCapture(hwnd);
+                }
+
+                if (mediaActive && height > collapsedThreshold && (g_idleTab % 4) == 0) {
                     float totalScale = (GetDpiForWindow(hwnd) / 96.0f) * g_settings.sizeScale;
                     float cx = width / 2.0f;
                     float cy = height / 2.0f;
@@ -4148,12 +4465,17 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
                 int xPos = GET_X_LPARAM(lParam);
                 int yPos = GET_Y_LPARAM(lParam);
+                int deltaX = xPos - s_dragStartX;
                 
-                bool expanded = Wh_GetIntValue(L"PinnedExpanded", 0) != 0 || g_clickExpanded.load();
-                if (!g_settings.expandOnHover && !expanded) {
-                    g_clickExpanded = true;
-                    g_layoutDirty = true;
-                    return 0; // consumed click to expand
+                RECT clientRect;
+                GetClientRect(hwnd, &clientRect);
+                const float height = static_cast<float>(clientRect.bottom - clientRect.top);
+                const float width = static_cast<float>(clientRect.right - clientRect.left);
+
+                float collapsedThreshold = 55.0f * g_settings.sizeScale + 44.0f;
+                // Release capture if we set it for swipe dragging
+                if (height <= collapsedThreshold && g_settings.enableMiniPillNav) {
+                    ReleaseCapture();
                 }
                 
                 bool mediaActive = false;
@@ -4164,17 +4486,88 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                     kinds = ChooseActivities(g_state, g_settings, NowSeconds());
                 }
 
+                // ===== COLLAPSED MODE NAVIGATION =====
+                if (height <= collapsedThreshold) {
+                    // 1. Horizontal Drag / Swipe Gesture (abs(deltaX) > 20)
+                    if (g_settings.enableMiniPillNav && abs(deltaX) > 20) {
+                        if (deltaX < -20) {
+                            // Swiped LEFT -> next mini pill
+                            g_idleMiniPillIndex++;
+                        } else if (deltaX > 20) {
+                            // Swiped RIGHT -> prev mini pill
+                            g_idleMiniPillIndex--;
+                        }
+                        Wh_SetIntValue(L"LastMiniPillIndex", g_idleMiniPillIndex.load());
+                        g_layoutDirty = true;
+                        if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+                        return 0;
+                    }
+
+                    // 2. Mini-Pill Tap / Click to Expand
+                    bool isCarouselClick = !kinds.empty() &&
+                        (kinds[0] == IslandKind::Idle || (kinds[0] == IslandKind::Media && g_settings.enableMiniPillNav));
+                    if (isCarouselClick) {
+                        bool deviceActive = false;
+                        bool mediaActive = false;
+                        {
+                            std::lock_guard lock(g_stateMutex);
+                            deviceActive = g_state.device.active;
+                            mediaActive = g_state.media.available;
+                        }
+
+                        enum MiniPillWidget { PW_Clock = 0, PW_STT, PW_Device, PW_Battery, PW_Media, PW_System, PW_Calendar, PW_Weather };
+                        std::vector<int> availableWidgets;
+                        availableWidgets.push_back(PW_Clock);
+                        availableWidgets.push_back(PW_STT);
+                        if (deviceActive) availableWidgets.push_back(PW_Device);
+                        availableWidgets.push_back(PW_Battery);
+                        if (mediaActive) availableWidgets.push_back(PW_Media);
+                        availableWidgets.push_back(PW_System);
+                        availableWidgets.push_back(PW_Calendar);
+                        availableWidgets.push_back(PW_Weather);
+
+                        int pillCount = static_cast<int>(availableWidgets.size());
+                        if (pillCount == 0) pillCount = 1;
+                        int rawIdx = g_idleMiniPillIndex.load();
+                        int safeIdx = ((rawIdx % pillCount) + pillCount) % pillCount;
+                        int miniPill = availableWidgets[safeIdx];
+
+                        // Tap action:
+                        if (miniPill == PW_STT) { // STT mini pill tap
+                            StartSpeechToTextMode();
+                            return 0;
+                        }
+
+                        // Tap expands the Dynamic Island to show the dashboard pages or Media player!
+                        if (mediaActive) {
+                            if (miniPill == PW_Media) g_idleTab = 0;
+                            else if (miniPill == PW_Calendar) g_idleTab = 1;
+                            else if (miniPill == PW_Weather) g_idleTab = 2;
+                            else if (miniPill == PW_System) g_idleTab = 3;
+                        } else {
+                            if (miniPill == PW_Calendar) g_idleTab = 0;
+                            else if (miniPill == PW_Weather) g_idleTab = 1;
+                            else if (miniPill == PW_System) g_idleTab = 2;
+                        }
+
+                        g_clickExpanded = true;
+                        g_layoutDirty = true;
+                        if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+                        return 0;
+                    }
+                }
+
+                if (!kinds.empty() && kinds[0] == IslandKind::SpeechToText) {
+                    StopSpeechToTextMode();
+                    return 0;
+                }
+
                 if (g_timerAlertActive) {
                     g_timerActive = false;
                     g_timerAlertActive = false;
                     g_layoutDirty = true;
                     return 0;
                 }
-
-                RECT clientRect;
-                GetClientRect(hwnd, &clientRect);
-                const float height = static_cast<float>(clientRect.bottom - clientRect.top);
-                const float width = static_cast<float>(clientRect.right - clientRect.left);
 
                 float totalScale = (GetDpiForWindow(hwnd) / 96.0f) * g_settings.sizeScale;
                 float cx = width / 2.0f;
@@ -4234,7 +4627,7 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                     }
                 }
 
-                if (mediaActive && height > 60.0f && (g_idleTab % 4) == 0) {
+                if (mediaActive && height > collapsedThreshold && (g_idleTab % 4) == 0) {
                     float cx = width / 2.0f;
                     float cy = height / 2.0f;
                     
@@ -4292,7 +4685,7 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
                 // Check tools clicks when we are on the Tools Tray tab
                 bool onToolsTab = (mediaActive && currentTab == 4) || (!mediaActive && currentTab == 3);
-                if (height > 60.0f && onToolsTab && !kinds.empty() && (kinds[0] == IslandKind::Idle || kinds[0] == IslandKind::Media)) {
+                if (height > collapsedThreshold && onToolsTab && !kinds.empty() && (kinds[0] == IslandKind::Idle || kinds[0] == IslandKind::Media)) {
                     float clickX = unX + unW * 0.5f;
                     float clickY = unY + unH * 0.5f;
 
@@ -4373,12 +4766,12 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                     }
 
                     // Card Grid Click Checking (matching grid layout in dynamic_island_ui.h)
-                    float startGridY = 46.0f * scale;
-                    float cardW = 90.0f * scale;
+                    float startGridY = 44.0f * scale;
+                    float cardW = 88.0f * scale;
                     float cardH = 72.0f * scale;
                     float gapX = 12.0f * scale;
                     float gapY = 12.0f * scale;
-                    float marginX = 12.0f * scale;
+                    float marginX = 14.0f * scale;
 
                     size_t totalItems = g_activeTools.size();
 
@@ -4388,9 +4781,8 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                         float x = marginX + c * (cardW + gapX);
                         float y = startGridY + r * (cardH + gapY);
 
-                        // Calculate hovered card boundary
-                        float cardTop = y - 3.0f * scale;
-                        float cardBottom = y + cardH - 3.0f * scale;
+                        float cardTop = y;
+                        float cardBottom = y + cardH;
 
                         if (pillClickX >= x && pillClickX <= x + cardW && pillClickY >= cardTop && pillClickY <= cardBottom) {
                             if (g_toolsEditMode) {
@@ -4407,6 +4799,10 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                             } else {
                                 // Launch tool
                                 std::wstring toolId = g_activeTools[i];
+                                if (toolId == L"speechtotext") {
+                                    StartSpeechToTextMode();
+                                    return 0;
+                                }
                                 if (toolId == L"clipboard") {
                                     keybd_event(VK_LWIN, 0, 0, 0);
                                     keybd_event('V', 0, 0, 0);
@@ -4447,23 +4843,43 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                     }
                 }
 
+
+                if (height > collapsedThreshold) {
+                    float scale = g_settings.sizeScale;
+                    // Check right edge vertical pagination dots click (exact tray selection)
+                    if (xPos >= width - 40.0f * scale) {
+                        float cy = height * 0.5f;
+                        float spacing = 14.0f * scale;
+                        if (yPos < cy - spacing) g_idleTab = 0; // Calendar
+                        else if (yPos < cy) g_idleTab = 1; // Weather
+                        else if (yPos < cy + spacing) g_idleTab = 2; // System
+                        else g_idleTab = 3; // Tools
+                        g_layoutDirty = true;
+                        if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+                        return 0;
+                    }
+
+                    // Click left half -> prev tray, click right half -> next tray
+                    if (xPos < width * 0.45f) {
+                        g_idleTab = (g_idleTab - 1 + tabCount) % tabCount;
+                    } else {
+                        g_idleTab = (g_idleTab + 1) % tabCount;
+                    }
+                    g_layoutDirty = true;
+                    if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+                    return 0;
+                }
+
                 // If media is playing and we are on the Media tab (0), clicking outside controls opens music app
                 if (mediaActive && currentTab == 0) {
-                    if (height > 45.0f && xPos > width - 30.0f) {
+                    if (height > collapsedThreshold && xPos > width - 30.0f) {
                         g_idleTab = (g_idleTab + 1) % tabCount;
                         g_layoutDirty = true;
                     } else {
                         OpenRelevantApp();
                     }
                 } else {
-                    // We are either in Idle or on one of the sub-tabs of Media
-                    if (!kinds.empty() && (kinds[0] == IslandKind::Idle || kinds[0] == IslandKind::Media) && height > 45.0f) {
-                        if (xPos < width / 2.0f) g_idleTab = (g_idleTab - 1 + tabCount) % tabCount;
-                        else g_idleTab = (g_idleTab + 1) % tabCount;
-                        g_layoutDirty = true;
-                    } else {
-                        HandleStatusClickAtPoint(hwnd, lParam);
-                    }
+                    HandleStatusClickAtPoint(hwnd, lParam);
                 }
             }
             return 0;
@@ -4489,13 +4905,36 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             }
             int tabCount = mediaActive ? 5 : 4;
             int delta = GET_WHEEL_DELTA_WPARAM(wParam);
-            if (delta > 0) {
-                if (g_idleTab > 0) g_idleTab--;
-            } else if (delta < 0) {
-                if (g_idleTab < tabCount - 1) g_idleTab++;
+            
+            RECT rcWnd = {};
+            GetWindowRect(hwnd, &rcWnd);
+            float height = static_cast<float>(rcWnd.bottom - rcWnd.top);
+
+            float collapsedThreshold = 55.0f * g_settings.sizeScale + 44.0f;
+            if (height > collapsedThreshold) {
+                // EXPANDED MODE: Scroll Wheel Up / Down cycles vertical pagination dots (Calendar <-> Weather <-> System <-> Tools)!
+                if (delta > 0) {
+                    g_idleTab = (g_idleTab - 1 + tabCount) % tabCount;
+                } else if (delta < 0) {
+                    g_idleTab = (g_idleTab + 1) % tabCount;
+                }
+            } else {
+                // COLLAPSED MODE: Scroll Wheel cycles mini-pill carousel!
+                if (g_settings.enableMiniPillNav) {
+                    if (delta < 0) g_idleMiniPillIndex++;
+                    else if (delta > 0) g_idleMiniPillIndex--;
+                    Wh_SetIntValue(L"LastMiniPillIndex", g_idleMiniPillIndex.load());
+                } else {
+                    if (delta > 0) {
+                        g_idleTab = (g_idleTab - 1 + tabCount) % tabCount;
+                    } else if (delta < 0) {
+                        g_idleTab = (g_idleTab + 1) % tabCount;
+                    }
+                }
             }
             
             g_layoutDirty = true;
+            if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
             return 0;
         }
 
@@ -4519,54 +4958,73 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
 DWORD WINAPI RenderThreadProc(void*) {
     Wh_Log(L"RenderThreadProc started.");
-    HRESULT hrCo = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-
-    WNDCLASSEXW wc = {};
-    wc.cbSize = sizeof(wc);
-    wc.lpfnWndProc = OverlayWndProc;
-    wc.hInstance = GetModuleHandleW(nullptr);
-    wc.lpszClassName = kWindowClass;
-    wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    RegisterClassExW(&wc);
-    Wh_Log(L"Class registered.");
-
-    HWND hwnd = CreateWindowExW(
-        WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT,
-        kWindowClass, L"Dynamic Island for Windows", WS_POPUP, 0, 0, 520, 140,
-        nullptr, nullptr, wc.hInstance, nullptr);
-
-    if (!hwnd) {
-        Wh_Log(L"Failed to create Dynamic Island overlay window. Error: %d", GetLastError());
-        if (SUCCEEDED(hrCo)) {
-            CoUninitialize();
+    try {
+        HRESULT hrCo = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+        if (FAILED(hrCo) && hrCo != RPC_E_CHANGED_MODE) {
+            Wh_Log(L"CoInitializeEx failed: 0x%08X", (unsigned)hrCo);
+        } else {
+            Wh_Log(L"CoInitializeEx result: 0x%08X", (unsigned)hrCo);
         }
-        return 0;
-    }
 
-    Wh_Log(L"Window created successfully (HWND = %p).", hwnd);
-    g_hwnd = hwnd;
-    g_shellHookMessage = RegisterWindowMessageW(L"SHELLHOOK");
-    UpdateWindowBlur(hwnd, g_settings.colorTheme);
-    ShowWindow(hwnd, SW_SHOWNOACTIVATE);
-
-    Renderer renderer;
-    if (!renderer.Initialize(hwnd)) {
-        Wh_Log(L"Renderer initialization failed!");
-        DestroyWindow(hwnd);
-        g_hwnd = nullptr;
-        if (SUCCEEDED(hrCo)) {
-            CoUninitialize();
+        WNDCLASSEXW wc = {};
+        wc.cbSize = sizeof(wc);
+        wc.lpfnWndProc = OverlayWndProc;
+        wc.hInstance = GetModuleHandleW(nullptr);
+        wc.lpszClassName = kWindowClass;
+        wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+        ATOM atom = RegisterClassExW(&wc);
+        if (!atom) {
+            DWORD err = GetLastError();
+            if (err == ERROR_CLASS_ALREADY_EXISTS) {
+                Wh_Log(L"Window class already registered (from previous instance), reusing it.");
+            } else {
+                Wh_Log(L"RegisterClassExW failed. Error: %d", err);
+                if (SUCCEEDED(hrCo)) CoUninitialize();
+                return 0;
+            }
         }
-        return 0;
-    }
+        Wh_Log(L"Class ready (atom=%d).", atom);
 
-    Wh_Log(L"Renderer initialized successfully.");
+        HWND hwnd = CreateWindowExW(
+            WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT,
+            kWindowClass, L"Dynamic Island for Windows", WS_POPUP, 0, 0, 520, 140,
+            nullptr, nullptr, wc.hInstance, nullptr);
+
+        if (!hwnd) {
+            Wh_Log(L"Failed to create Dynamic Island overlay window. Error: %d", GetLastError());
+            if (SUCCEEDED(hrCo)) {
+                CoUninitialize();
+            }
+            return 0;
+        }
+
+        Wh_Log(L"Window created successfully (HWND = %p).", hwnd);
+        g_hwnd = hwnd;
+        g_shellHookMessage = RegisterWindowMessageW(L"SHELLHOOK");
+        UpdateWindowBlur(hwnd, g_settings.colorTheme);
+        ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+
+        Renderer renderer;
+        if (!renderer.Initialize(hwnd)) {
+            Wh_Log(L"Renderer initialization failed!");
+            DestroyWindow(hwnd);
+            g_hwnd = nullptr;
+            if (SUCCEEDED(hrCo)) {
+                CoUninitialize();
+            }
+            return 0;
+        }
+
+        Wh_Log(L"Renderer initialized successfully.");
+    g_lastInteractionTime.store(NowSeconds());
     SpringValue widthSpring;
     SpringValue heightSpring;
     SpringValue nudgeSpring;
+    SpringValue fadeSpring;
     widthSpring.Reset((g_settings.autoHideIdleSeconds == -1 ? 0.0f : 120.0f) * g_settings.sizeScale);
     heightSpring.Reset((g_settings.autoHideIdleSeconds == -1 ? 0.0f : 36.0f) * g_settings.sizeScale);
     nudgeSpring.Reset(0.0f);
+    fadeSpring.Reset(g_settings.autoHideIdleSeconds == -1 ? 0.0f : 1.0f);
 
     IslandKind previousPrimary = IslandKind::Idle;
     auto previousFrame = std::chrono::steady_clock::now();
@@ -4630,6 +5088,17 @@ DWORD WINAPI RenderThreadProc(void*) {
             nextPrivacyPoll = now + 2.0;  // poll every 2 s
         }
 
+        if (g_sttModeActive) {
+            ULONGLONG nowTick = GetTickCount64();
+            uint32_t dur = static_cast<uint32_t>((nowTick - g_sttStartTick) / 1000);
+            {
+                std::lock_guard lock(g_stateMutex);
+                g_state.speechToText.durationSec = dur;
+            }
+            UpdateSttPopoverPos();
+            g_layoutDirty = true;
+        }
+
         SharedState snapshot;
         {
             std::lock_guard lock(g_stateMutex);
@@ -4672,6 +5141,16 @@ DWORD WINAPI RenderThreadProc(void*) {
 
         const bool pinned = Wh_GetIntValue(L"PinnedExpanded", 0) != 0;
 
+        // Auto-switch mini-pill to Media when music starts playing
+        if (primary.kind == IslandKind::Media && previousPrimary != IslandKind::Media && g_settings.enableMiniPillNav) {
+            // Find the Media pill index in the dynamic available widgets list
+            int mediaPillIdx = 2; // Clock(0), STT(1), then...
+            if (snapshot.device.active) mediaPillIdx++; // Device
+            mediaPillIdx++; // Battery
+            // mediaPillIdx now points to the Media slot
+            g_idleMiniPillIndex = mediaPillIdx;
+        }
+
         if (primary.kind != previousPrimary && primary.kind != IslandKind::Idle) {
             nudgeSpring.value = -6.0f;
             nudgeSpring.velocity = 0.0f;
@@ -4693,16 +5172,38 @@ DWORD WINAPI RenderThreadProc(void*) {
             hoverRect.left = static_cast<long>(cx - minHoverWidth * 0.5f);
             hoverRect.right = static_cast<long>(cx + minHoverWidth * 0.5f);
         }
-        float minHoverHeight = 36.0f * g_settings.sizeScale;
-        float currentHeight = static_cast<float>(windowRect.bottom - windowRect.top);
-        if (currentHeight < minHoverHeight) {
-            if (g_settings.position == Position::BottomCenter) {
+        
+        // Extend hoverRect to the screen edges so it's easy to hover-unhide or hover-expand
+        RECT work = GetAnchorWorkRect();
+        if (g_settings.position == Position::BottomCenter) {
+            hoverRect.bottom = work.bottom;
+            float minHoverHeight = 36.0f * g_settings.sizeScale;
+            float currentHeight = static_cast<float>(windowRect.bottom - windowRect.top);
+            if (currentHeight < minHoverHeight) {
                 hoverRect.top = static_cast<long>(windowRect.bottom - minHoverHeight);
-            } else {
+            }
+        } else {
+            hoverRect.top = work.top;
+            float minHoverHeight = 36.0f * g_settings.sizeScale;
+            float currentHeight = static_cast<float>(windowRect.bottom - windowRect.top);
+            if (currentHeight < minHoverHeight) {
                 hoverRect.bottom = static_cast<long>(windowRect.top + minHoverHeight);
             }
         }
         const bool hover = PtInRect(&hoverRect, cursor) != FALSE;
+        
+        bool shouldWakeWordBeActive = g_settings.voiceWakeWordEnabled && 
+            (hover || pinned || primary.kind == IslandKind::VoiceAssistant || g_voiceAssistantActive);
+
+        if (g_wakeWordListener) {
+            if (shouldWakeWordBeActive && !g_wakeWordActiveState && !g_voiceAssistantActive && !g_sttModeActive) {
+                g_wakeWordListener->Start(g_settings.voiceWakeWord);
+                g_wakeWordActiveState = true;
+            } else if (!shouldWakeWordBeActive && g_wakeWordActiveState && !g_voiceAssistantActive) {
+                g_wakeWordListener->Stop();
+                g_wakeWordActiveState = false;
+            }
+        }
         
         bool needsRender = false;
         
@@ -4710,12 +5211,52 @@ DWORD WINAPI RenderThreadProc(void*) {
             g_clickExpanded = false;
             needsRender = true;
         }
-        static double lastInteractionTime = NowSeconds();
+        double lastInteractionTime = g_lastInteractionTime.load();
+
+        bool isMediaPlaying = snapshot.media.available && snapshot.media.playing;
+        bool isMediaActivePill = false;
+        if (snapshot.media.available) {
+            enum { PW_Clock = 0, PW_STT, PW_Device, PW_Battery, PW_Media, PW_System, PW_Calendar, PW_Weather };
+            std::vector<int> availableWidgets;
+            availableWidgets.push_back(PW_Clock);
+            availableWidgets.push_back(PW_STT);
+            if (snapshot.device.active) availableWidgets.push_back(PW_Device);
+            availableWidgets.push_back(PW_Battery);
+            availableWidgets.push_back(PW_Media);
+            availableWidgets.push_back(PW_System);
+            availableWidgets.push_back(PW_Calendar);
+            availableWidgets.push_back(PW_Weather);
+
+            int pillCount = static_cast<int>(availableWidgets.size());
+            if (pillCount > 0) {
+                int rawIdx = g_idleMiniPillIndex.load();
+                int safeIdx = ((rawIdx % pillCount) + pillCount) % pillCount;
+                if (availableWidgets[safeIdx] == PW_Media) {
+                    isMediaActivePill = true;
+                }
+            }
+        }
+        bool isTimerActive = g_timerActive;
+        bool isSttActive = g_sttModeActive;
+        bool isVoiceActive = g_voiceAssistantActive.load();
+        bool preventHide = (primary.kind != IslandKind::Idle) || isMediaPlaying || isTimerActive || isSttActive || isVoiceActive || isMediaActivePill;
+
+        if (preventHide) {
+            g_lastInteractionTime.store(now);
+            lastInteractionTime = now;
+        }
+
         bool currentlyHidden = false;
-        if (g_settings.autoHideIdleSeconds == -1) {
+        if (hover && g_settings.unhideOnHover) {
+            currentlyHidden = false;
+        } else if (g_settings.autoHideIdleSeconds == -1) {
             currentlyHidden = true;
         } else if (g_settings.autoHideIdleSeconds > 0) {
             currentlyHidden = (now - lastInteractionTime > g_settings.autoHideIdleSeconds);
+        }
+
+        if (preventHide) {
+            currentlyHidden = false;
         }
 
         bool isHoverExpanded = g_settings.expandOnHover ? hover : (hover && g_clickExpanded.load());
@@ -4723,14 +5264,60 @@ DWORD WINAPI RenderThreadProc(void*) {
         if (currentlyHidden && !g_settings.unhideOnHover && primary.kind == IslandKind::Idle) {
             isHoverExpanded = false;
         } else if ((hover && (g_settings.unhideOnHover || !currentlyHidden)) || pinned || primary.kind != IslandKind::Idle) {
+            g_lastInteractionTime.store(now);
             lastInteractionTime = now;
         }
         
         bool isHidden = false;
-        if (g_settings.autoHideIdleSeconds == -1) {
+        if (hover && g_settings.unhideOnHover) {
+            isHidden = false;
+        } else if (g_settings.autoHideIdleSeconds == -1) {
             isHidden = true;
         } else if (g_settings.autoHideIdleSeconds > 0) {
             isHidden = (now - lastInteractionTime > g_settings.autoHideIdleSeconds);
+        }
+
+        if (preventHide) {
+            isHidden = false;
+        }
+
+        // ===== Dynamic Mini-Pill Navigation & Expansion Override =====
+        if (g_settings.enableMiniPillNav && primary.kind == IslandKind::Idle) {
+            enum { PW_Clock = 0, PW_STT, PW_Device, PW_Battery, PW_Media, PW_System, PW_Calendar, PW_Weather };
+            std::vector<int> availableWidgets;
+            availableWidgets.push_back(PW_Clock);
+            availableWidgets.push_back(PW_STT);
+            if (snapshot.device.active) availableWidgets.push_back(PW_Device);
+            availableWidgets.push_back(PW_Battery);
+            if (snapshot.media.available) availableWidgets.push_back(PW_Media);
+            availableWidgets.push_back(PW_System);
+            availableWidgets.push_back(PW_Calendar);
+            availableWidgets.push_back(PW_Weather);
+
+            int pillCount = static_cast<int>(availableWidgets.size());
+            if (pillCount == 0) pillCount = 1;
+            int rawIdx = g_idleMiniPillIndex.load();
+            int safeIdx = ((rawIdx % pillCount) + pillCount) % pillCount;
+            int activePill = availableWidgets[safeIdx];
+
+            // Auto-switch to Media pill when music starts playing
+            static bool wasMediaPlaying = false;
+            bool isMediaPlaying = snapshot.media.available && snapshot.media.playing;
+            if (isMediaPlaying && !wasMediaPlaying) {
+                for (size_t i = 0; i < availableWidgets.size(); ++i) {
+                    if (availableWidgets[i] == PW_Media) {
+                        g_idleMiniPillIndex = static_cast<int>(i);
+                        activePill = PW_Media;
+                        break;
+                    }
+                }
+            }
+            wasMediaPlaying = isMediaPlaying;
+
+            bool isExpanded = pinned || isHoverExpanded || g_clickExpanded.load();
+            if (isExpanded && activePill == PW_Media && snapshot.media.available) {
+                primary = ActivityForKind(IslandKind::Media, g_settings, snapshot);
+            }
         }
 
         bool privacyActive = snapshot.system.micActive || snapshot.system.cameraActive;
@@ -4741,6 +5328,16 @@ DWORD WINAPI RenderThreadProc(void*) {
             } else if (isHidden && !privacyActive) {
                 primary.width = 0.0f;
                 primary.height = 0.0f;
+            } else {
+                // Dynamic width: index 0 in available list is always the Clock pill
+                int rawIdx = g_idleMiniPillIndex.load();
+                int pillCount = 6; // Clock, STT, Battery, System, Calendar, Weather
+                if (snapshot.device.active) pillCount++;
+                if (snapshot.media.available) pillCount++;
+                int safeIdx = ((rawIdx % pillCount) + pillCount) % pillCount;
+                float baseW = (safeIdx == 0) ? 175.0f : 205.0f;
+                primary.width = baseW * g_settings.sizeScale;
+                primary.height = 36.0f * g_settings.sizeScale;
             }
         }
         if (primary.kind == IslandKind::Idle &&
@@ -4818,24 +5415,24 @@ DWORD WINAPI RenderThreadProc(void*) {
         dt = Clamp(dt, 0.001f, 0.050f);
 
         const float speed = g_settings.animationSpeed;
-        float widthStiffness = 280.0f;
-        float widthDamping = 24.0f;
+        float widthStiffness = 150.0f;
+        float widthDamping = 21.0f;
         if (targetWidth > widthSpring.value) {
-            widthStiffness = 380.0f;
-            widthDamping = 26.0f;
+            widthStiffness = 160.0f;
+            widthDamping = 22.0f;
         } else if (targetWidth < widthSpring.value) {
-            widthStiffness = 200.0f;
-            widthDamping = 28.0f;
+            widthStiffness = 130.0f;
+            widthDamping = 19.0f;
         }
 
-        float heightStiffness = 280.0f;
-        float heightDamping = 24.0f;
+        float heightStiffness = 150.0f;
+        float heightDamping = 21.0f;
         if (targetHeight > heightSpring.value) {
-            heightStiffness = 380.0f;
-            heightDamping = 26.0f;
+            heightStiffness = 160.0f;
+            heightDamping = 22.0f;
         } else if (targetHeight < heightSpring.value) {
-            heightStiffness = 200.0f;
-            heightDamping = 28.0f;
+            heightStiffness = 130.0f;
+            heightDamping = 19.0f;
         }
 
         widthSpring.Step(dt * speed, widthStiffness, widthDamping);
@@ -4852,6 +5449,12 @@ DWORD WINAPI RenderThreadProc(void*) {
 
         nudgeSpring.Step(dt * speed, 280.0f, 24.0f);
 
+        float targetFade = (isHidden && !privacyActive) ? 0.0f : 1.0f;
+        fadeSpring.target = targetFade;
+        fadeSpring.Step(dt * speed, 160.0f, 20.0f);
+        if (fadeSpring.value < 0.0f) fadeSpring.value = 0.0f;
+        if (fadeSpring.value > 1.0f) fadeSpring.value = 1.0f;
+
         {
             std::lock_guard lock(g_stateMutex);
             g_state.system.renderFps = ClampInt(static_cast<int>(1.0f / std::max(dt, 0.001f) + 0.5f), 0, 240);
@@ -4859,10 +5462,11 @@ DWORD WINAPI RenderThreadProc(void*) {
 
         SetClickThrough(hwnd, primary.kind == IslandKind::Idle && !hover && !pinned);
 
-        // Check if animating structurally
+        // Check if animating structurally or fading
         if (std::abs(widthSpring.velocity) > 0.01f || std::abs(widthSpring.target - widthSpring.value) > 0.01f ||
             std::abs(heightSpring.velocity) > 0.01f || std::abs(heightSpring.target - heightSpring.value) > 0.01f ||
-            std::abs(nudgeSpring.velocity) > 0.01f || std::abs(nudgeSpring.target - nudgeSpring.value) > 0.01f) {
+            std::abs(nudgeSpring.velocity) > 0.01f || std::abs(nudgeSpring.target - nudgeSpring.value) > 0.01f ||
+            std::abs(fadeSpring.velocity) > 0.001f || std::abs(fadeSpring.target - fadeSpring.value) > 0.001f) {
             needsRender = true;
         }
 
@@ -4895,7 +5499,7 @@ DWORD WINAPI RenderThreadProc(void*) {
         // Animated activities that require continuous rendering
         if (primary.kind == IslandKind::Media || primary.kind == IslandKind::BatteryLow ||
             primary.kind == IslandKind::Clipboard || primary.kind == IslandKind::Notification ||
-            primary.kind == IslandKind::Timer) {
+            primary.kind == IslandKind::Timer || primary.kind == IslandKind::VoiceAssistant) {
             needsRender = true;
         }
 
@@ -4971,7 +5575,7 @@ DWORD WINAPI RenderThreadProc(void*) {
         if (needsRender) {
             renderer.Render(snapshot, g_settings, primary, secondary,
                             widthSpring.value, heightSpring.value, nudgeSpring.value,
-                            hover, pinned, now);
+                            hover, pinned, now, fadeSpring.value);
         }
 
         WaitForSingleObject(g_stopEvent, 16);
@@ -4982,10 +5586,11 @@ DWORD WINAPI RenderThreadProc(void*) {
     g_hwnd = nullptr;
     UnregisterClassW(kWindowClass, wc.hInstance);
 
-    if (SUCCEEDED(hrCo)) {
-        CoUninitialize();
+    } catch (std::exception const& e) {
+        Wh_Log(L"RenderThreadProc exception: %hs", e.what());
+    } catch (...) {
+        Wh_Log(L"RenderThreadProc unknown exception!");
     }
-
     return 0;
 }
 
@@ -5005,11 +5610,16 @@ bool StartThreads() {
     }
 
     g_mediaThread = CreateThread(nullptr, 0, MediaThreadProc, nullptr, 0, nullptr);
+    Wh_Log(L"Media thread created: %p", g_mediaThread);
     g_audioThread = CreateThread(nullptr, 0, AudioThreadProc, nullptr, 0, nullptr);
+    Wh_Log(L"Audio thread created: %p", g_audioThread);
     g_weatherThread = CreateThread(nullptr, 0, WeatherThreadProc, nullptr, 0, nullptr);
+    Wh_Log(L"Weather thread created: %p", g_weatherThread);
     g_keyboardThread = CreateThread(nullptr, 0, KeyboardThreadProc, nullptr, 0, &g_keyboardThreadId);
+    Wh_Log(L"Keyboard thread created: %p, ID: %d", g_keyboardThread, g_keyboardThreadId);
 #if DYNAMIC_ISLAND_HAS_USER_NOTIFICATION_LISTENER
     g_notificationThread = CreateThread(nullptr, 0, NotificationThreadProc, nullptr, 0, nullptr);
+    Wh_Log(L"Notification thread created: %p", g_notificationThread);
 #endif
 
     return true;
@@ -5051,16 +5661,597 @@ void StopThreads() {
     g_running = false;
 }
 
+void TriggerWakeWordActivation() {
+    // If already recording or active, ignore new triggers
+    if (g_voiceRecording || g_voiceAssistantActive.exchange(true)) {
+        return;
+    }
 
+    // Spawn processing thread immediately to avoid deadlocks with the WinRT callback thread
+    CreateThread(nullptr, 0, [](LPVOID) -> DWORD {
+        try { winrt::init_apartment(winrt::apartment_type::multi_threaded); } catch (...) {}
+
+        // Stop active TTS speaking immediately
+        if (g_ttsService) {
+            g_ttsService->Stop();
+        }
+
+        // Stop wake word listener temporarily so it doesn't double-listen
+        if (g_wakeWordListener) {
+            g_wakeWordListener->Stop();
+        }
+
+        // Pause media if playing
+        {
+            std::lock_guard lock(g_stateMutex);
+            g_wasMediaPlaying = g_state.media.playing;
+        }
+        if (g_wasMediaPlaying) {
+            keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0);
+            keybd_event(VK_MEDIA_PLAY_PAUSE, 0, KEYEVENTF_KEYUP, 0);
+        }
+
+        // Expand island and show Listening
+        {
+            std::lock_guard lock(g_stateMutex);
+            g_state.voiceAssistant.active = true;
+            g_state.voiceAssistant.activeState = 1; // Listening
+            g_state.voiceAssistant.textPrompt = L"";
+            g_state.voiceAssistant.textFeedback = L"Listening...";
+        }
+        g_layoutDirty = true;
+        if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+
+        // Start WASAPI waveform capture
+        if (g_voiceRecorder) {
+            g_voiceRecorder->StartRecording();
+        }
+
+        // Start WinRT STT listening (hands-free auto-silence mode)
+        if (g_sttService) {
+            g_sttService->StartListening();
+        }
+
+        // Block until user stops speaking (silence detected by WinRT)
+        std::wstring text = L"";
+        if (g_sttService) {
+            text = g_sttService->WaitForCompletion();
+        }
+
+        // Stop WASAPI waveform capture
+        if (g_voiceRecorder) {
+            g_voiceRecorder->StopRecording();
+        }
+
+        {
+            std::lock_guard lock(g_stateMutex);
+            g_state.voiceAssistant.activeState = 2; // Processing
+            g_state.voiceAssistant.textFeedback = L"Understanding...";
+        }
+        g_layoutDirty = true;
+        if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+
+        ai::SkillResult skillRes;
+        bool executed = false;
+
+        if (text.empty()) {
+            skillRes.success = false;
+            skillRes.visualFeedback = L"Didn't catch that";
+            skillRes.voiceFeedback = L"I didn't catch that. Please speak clearly.";
+            executed = true;
+        }
+
+        if (!executed) {
+            {
+                std::lock_guard lock(g_stateMutex);
+                g_state.voiceAssistant.textPrompt = text;
+            }
+
+            ai::IntentResult res;
+            if (g_intentRouter && g_contextManager) {
+                res = g_intentRouter->Route(text, g_contextManager->GetContext());
+            }
+
+            if (res.intent.name == L"UNKNOWN") {
+                skillRes.success = false;
+                skillRes.visualFeedback = L"Unknown: " + text;
+                skillRes.voiceFeedback = L"I heard: " + text + L". Try saying open, close, volume up, or mute.";
+                executed = true;
+            }
+
+            if (!executed && g_pluginManager) {
+                skillRes = g_pluginManager->Dispatch(res.intent);
+                if (skillRes.success) {
+                    executed = true;
+                    if (g_contextManager && res.intent.name == L"LAUNCH_APP") {
+                        g_contextManager->SetLastOpenedApp(res.intent.target);
+                    }
+                }
+            }
+
+            if (!executed) {
+                executed = true;
+            }
+        }
+
+        {
+            std::lock_guard lock(g_stateMutex);
+            g_state.voiceAssistant.activeState = skillRes.success ? 3 : 4; // Success / Error
+            g_state.voiceAssistant.textFeedback = skillRes.visualFeedback;
+        }
+        g_layoutDirty = true;
+        if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+
+        // Speak the feedback (blocking)
+        if (!skillRes.voiceFeedback.empty() && g_ttsService) {
+            g_ttsService->Speak(skillRes.voiceFeedback);
+        }
+
+        Sleep(1500);
+
+        // Resume media if it was paused
+        if (g_wasMediaPlaying) {
+            keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0);
+            keybd_event(VK_MEDIA_PLAY_PAUSE, 0, KEYEVENTF_KEYUP, 0);
+            g_wasMediaPlaying = false;
+        }
+
+        {
+            std::lock_guard lock(g_stateMutex);
+            g_state.voiceAssistant.active = false;
+            g_state.voiceAssistant.activeState = 0; // Idle
+        }
+        g_layoutDirty = true;
+        if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+
+        // Reset assistant active flag and restart continuous wake-word listener
+        g_voiceAssistantActive = false;
+        if (g_wakeWordListener && g_settings.voiceWakeWordEnabled) {
+            g_wakeWordListener->Start(g_settings.voiceWakeWord);
+        }
+
+        return 0;
+    }, nullptr, 0, nullptr);
+}
+
+void UpdateSttPopoverPos() {
+    if (!g_hwndSttPopover || !IsWindow(g_hwndSttPopover) || !g_hwnd) return;
+    RECT rcIsland = {};
+    GetWindowRect(g_hwnd, &rcIsland);
+    int cx = (rcIsland.left + rcIsland.right) / 2;
+    int w = 380;
+    int h = 200;
+    int x = cx - w / 2;
+    int y = rcIsland.bottom + 8;
+    SetWindowPos(g_hwndSttPopover, HWND_TOPMOST, x, y, w, h, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+}
+
+LRESULT CALLBACK SttPopoverWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+        case WM_CREATE: {
+            HRGN rgn = CreateRoundRectRgn(0, 0, 380, 200, 20, 20);
+            SetWindowRgn(hwnd, rgn, TRUE);
+            SetTimer(hwnd, 101, 500, nullptr);
+            break;
+        }
+        case WM_TIMER: {
+            InvalidateRect(hwnd, nullptr, FALSE);
+            break;
+        }
+        case WM_LBUTTONDOWN: {
+            int x = GET_X_LPARAM(lParam);
+            int y = GET_Y_LPARAM(lParam);
+
+            // Header Close Button (top right ✕): x=348..372, y=12..34
+            if (x >= 348 && x <= 372 && y >= 12 && y <= 34) {
+                StopSpeechToTextMode();
+                if (g_hwndSttPopover && IsWindow(g_hwndSttPopover)) {
+                    ShowWindow(g_hwndSttPopover, SW_HIDE);
+                }
+                return 0;
+            }
+
+            // Pause / Resume button: x=16..84, y=156..186
+            if (x >= 16 && x <= 84 && y >= 156 && y <= 186) {
+                if (g_sttPaused) ResumeSpeechToTextMode();
+                else PauseSpeechToTextMode();
+                return 0;
+            }
+
+            // Copy button: x=92..160, y=156..186
+            if (x >= 92 && x <= 160 && y >= 156 && y <= 186) {
+                std::wstring text;
+                {
+                    std::lock_guard lock(g_stateMutex);
+                    text = g_state.speechToText.transcript;
+                }
+                if (text.empty() && g_sttLiveService) text = g_sttLiveService->GetText();
+                if (!text.empty()) {
+                    if (OpenClipboard(hwnd)) {
+                        EmptyClipboard();
+                        HGLOBAL hGlob = GlobalAlloc(GMEM_MOVEABLE, (text.size() + 1) * sizeof(wchar_t));
+                        if (hGlob) {
+                            wchar_t* p = static_cast<wchar_t*>(GlobalLock(hGlob));
+                            wcscpy_s(p, text.size() + 1, text.c_str());
+                            GlobalUnlock(hGlob);
+                            SetClipboardData(CF_UNICODETEXT, hGlob);
+                        }
+                        CloseClipboard();
+                    }
+                    {
+                        std::lock_guard lock(g_stateMutex);
+                        g_state.notification.active = true;
+                        g_state.notification.app = L"Clipboard";
+                        g_state.notification.title = L"Copied to clipboard!";
+                        g_state.notification.expiresAt = NowSeconds() + 3.0;
+                    }
+                    g_layoutDirty = true;
+                }
+                return 0;
+            }
+
+            // Clear button: x=168..236, y=156..186
+            if (x >= 168 && x <= 236 && y >= 156 && y <= 186) {
+                if (g_sttLiveService) g_sttLiveService->Clear();
+                {
+                    std::lock_guard lock(g_stateMutex);
+                    g_state.speechToText.transcript = L"";
+                }
+                InvalidateRect(hwnd, nullptr, FALSE);
+                return 0;
+            }
+
+            // Open in Notepad button: x=244..364, y=156..186
+            if (x >= 244 && x <= 364 && y >= 156 && y <= 186) {
+                std::wstring text;
+                {
+                    std::lock_guard lock(g_stateMutex);
+                    text = g_state.speechToText.transcript;
+                }
+                if (text.empty() && g_sttLiveService) text = g_sttLiveService->GetText();
+
+                wchar_t tempPath[MAX_PATH] = {};
+                GetTempPathW(MAX_PATH, tempPath);
+                wcscat_s(tempPath, L"SpeechToText_Note.txt");
+
+                FILE* f = nullptr;
+                if (_wfopen_s(&f, tempPath, L"w, ccs=UTF-8") == 0 && f) {
+                    fwprintf(f, L"%ls", text.c_str());
+                    fclose(f);
+                }
+
+                ShellExecuteW(nullptr, L"open", L"notepad.exe", tempPath, nullptr, SW_SHOWNORMAL);
+                return 0;
+            }
+            break;
+        }
+        case WM_PAINT: {
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hwnd, &ps);
+
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+
+            HDC memDC = CreateCompatibleDC(hdc);
+            HBITMAP memBM = CreateCompatibleBitmap(hdc, rc.right, rc.bottom);
+            HBITMAP oldBM = (HBITMAP)SelectObject(memDC, memBM);
+
+            HBRUSH bgBrush = CreateSolidBrush(RGB(20, 20, 24));
+            FillRect(memDC, &rc, bgBrush);
+            DeleteObject(bgBrush);
+
+            HBRUSH badgeBg = CreateSolidBrush(RGB(42, 42, 58));
+            RECT badgeRc = {16, 14, 44, 42};
+            HRGN badgeRgn = CreateRoundRectRgn(16, 14, 44, 42, 8, 8);
+            FillRgn(memDC, badgeRgn, badgeBg);
+            DeleteObject(badgeRgn);
+            DeleteObject(badgeBg);
+
+            SetBkMode(memDC, TRANSPARENT);
+            SetTextColor(memDC, RGB(255, 255, 255));
+            HFONT hOldFont = (HFONT)SelectObject(memDC, g_hFont);
+
+            RECT badgeTxtRc = badgeRc;
+            DrawTextW(memDC, L"Tt", 2, &badgeTxtRc, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
+
+            RECT titleRc = {52, 16, 210, 40};
+            DrawTextW(memDC, L"Speech to Text", -1, &titleRc, DT_SINGLELINE | DT_VCENTER);
+
+            COLORREF statusClr = g_sttPaused ? RGB(255, 159, 10) : RGB(48, 209, 88);
+            HBRUSH statusDot = CreateSolidBrush(statusClr);
+            HGDIOBJ oldBrush = SelectObject(memDC, statusDot);
+            HPEN noPen = (HPEN)GetStockObject(NULL_PEN);
+            HGDIOBJ oldPen = SelectObject(memDC, noPen);
+            Ellipse(memDC, 260, 23, 268, 31);
+            SelectObject(memDC, oldBrush);
+            SelectObject(memDC, oldPen);
+            DeleteObject(statusDot);
+
+            SetTextColor(memDC, statusClr);
+            RECT liveRc = {272, 16, 335, 40};
+            DrawTextW(memDC, g_sttPaused ? L"Paused" : L"Live", -1, &liveRc, DT_SINGLELINE | DT_VCENTER);
+
+            // Header Top-Right Close Button (✕)
+            RECT closeBtnRc = {346, 14, 368, 36};
+            HBRUSH closeBg = CreateSolidBrush(RGB(38, 38, 50));
+            HRGN closeRgn = CreateRoundRectRgn(346, 14, 368, 36, 6, 6);
+            FillRgn(memDC, closeRgn, closeBg);
+            DeleteObject(closeRgn);
+            DeleteObject(closeBg);
+            SetTextColor(memDC, RGB(180, 180, 200));
+            DrawTextW(memDC, L"\u2715", 1, &closeBtnRc, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
+
+            RECT boxRc = {16, 50, 364, 148};
+            HBRUSH boxBg = CreateSolidBrush(RGB(14, 14, 18));
+            HRGN boxRgn = CreateRoundRectRgn(16, 50, 364, 148, 10, 10);
+            FillRgn(memDC, boxRgn, boxBg);
+
+            HPEN borderPen = CreatePen(PS_SOLID, 1, RGB(40, 40, 50));
+            SelectObject(memDC, borderPen);
+            FrameRgn(memDC, boxRgn, boxBg, 1, 1);
+            DeleteObject(borderPen);
+            DeleteObject(boxRgn);
+            DeleteObject(boxBg);
+
+            std::wstring transcript;
+            {
+                std::lock_guard lock(g_stateMutex);
+                transcript = g_state.speechToText.transcript;
+            }
+            if (transcript.empty() && g_sttLiveService) {
+                transcript = g_sttLiveService->GetText();
+            }
+
+            SelectObject(memDC, g_hFont ? g_hFont : hOldFont);
+            RECT textInnerRc = {24, 56, 356, 142};
+
+            if (transcript.empty()) {
+                SetTextColor(memDC, RGB(120, 120, 140));
+                DrawTextW(memDC, g_sttPaused ? L"Dictation paused. Tap Resume to continue recording..." : L"Listening... Speak naturally to convert speech into text in real time...", -1, &textInnerRc, DT_WORDBREAK);
+            } else {
+                SetTextColor(memDC, RGB(240, 240, 248));
+                static bool blink = false;
+                blink = !blink;
+                std::wstring disp = transcript + ((!g_sttPaused && blink) ? L"|" : L" ");
+                DrawTextW(memDC, disp.c_str(), -1, &textInnerRc, DT_WORDBREAK);
+            }
+
+            auto DrawBtn = [&](RECT r, const wchar_t* text, COLORREF bg, COLORREF fg, COLORREF border) {
+                HBRUSH btnBg = CreateSolidBrush(bg);
+                HRGN btnRgn = CreateRoundRectRgn(r.left, r.top, r.right, r.bottom, 8, 8);
+                FillRgn(memDC, btnRgn, btnBg);
+                HPEN p = CreatePen(PS_SOLID, 1, border);
+                HGDIOBJ op = SelectObject(memDC, p);
+                FrameRgn(memDC, btnRgn, (HBRUSH)GetStockObject(NULL_BRUSH), 1, 1);
+                DeleteObject(p);
+                DeleteObject(btnRgn);
+                DeleteObject(btnBg);
+                SetTextColor(memDC, fg);
+                RECT tr = r;
+                DrawTextW(memDC, text, -1, &tr, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
+            };
+
+            RECT rcPauseResume = {16, 156, 84, 186};
+            RECT rcCopy        = {92, 156, 160, 186};
+            RECT rcClear       = {168, 156, 236, 186};
+            RECT rcNotepad     = {244, 156, 364, 186};
+
+            if (g_sttPaused) {
+                DrawBtn(rcPauseResume, L"\u25B6 Resume", RGB(0, 110, 210), RGB(255, 255, 255), RGB(0, 130, 230));
+            } else {
+                DrawBtn(rcPauseResume, L"\u23F8 Pause", RGB(34, 34, 46), RGB(230, 230, 240), RGB(55, 55, 70));
+            }
+            DrawBtn(rcCopy, L"\xD83D\xDCCB Copy", RGB(34, 34, 46), RGB(230, 230, 240), RGB(55, 55, 70));
+            DrawBtn(rcClear, L"\u2715 Clear", RGB(34, 34, 46), RGB(230, 230, 240), RGB(55, 55, 70));
+            DrawBtn(rcNotepad, L"Notepad \u2197", RGB(0, 80, 180), RGB(255, 255, 255), RGB(0, 120, 220));
+
+            BitBlt(hdc, 0, 0, rc.right, rc.bottom, memDC, 0, 0, SRCCOPY);
+
+            SelectObject(memDC, hOldFont);
+            SelectObject(memDC, oldBM);
+            DeleteObject(memBM);
+            DeleteDC(memDC);
+
+            EndPaint(hwnd, &ps);
+            return 0;
+        }
+        case WM_DESTROY:
+            g_hwndSttPopover = nullptr;
+            break;
+    }
+    return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+void ShowSttPopoverWindow() {
+    if (!g_hwndSttPopover || !IsWindow(g_hwndSttPopover)) {
+        static bool reg = false;
+        if (!reg) {
+            WNDCLASSEXW wc = {};
+            wc.cbSize = sizeof(wc);
+            wc.lpfnWndProc = SttPopoverWndProc;
+            wc.hInstance = GetModuleHandle(nullptr);
+            wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+            wc.lpszClassName = L"Windhawk.DynamicIsland.SttPopover";
+            RegisterClassExW(&wc);
+            reg = true;
+        }
+        g_hwndSttPopover = CreateWindowExW(
+            WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+            L"Windhawk.DynamicIsland.SttPopover", L"Speech to Text",
+            WS_POPUP, 0, 0, 380, 200,
+            g_hwnd, nullptr, GetModuleHandle(nullptr), nullptr);
+        if (g_hwndSttPopover) {
+            SetLayeredWindowAttributes(g_hwndSttPopover, 0, 245, LWA_ALPHA);
+        }
+    }
+    UpdateSttPopoverPos();
+    if (g_hwndSttPopover) {
+        ShowWindow(g_hwndSttPopover, SW_SHOWNOACTIVATE);
+    }
+}
+
+void PauseSpeechToTextMode() {
+    if (!g_sttModeActive || g_sttPaused) return;
+    g_sttPaused = true;
+    if (g_sttLiveService) {
+        g_sttLiveService->Stop();
+    }
+    if (g_voiceRecorder) {
+        g_voiceRecorder->StopRecording();
+    }
+    {
+        std::lock_guard lock(g_stateMutex);
+        g_state.speechToText.recording = false;
+    }
+    g_layoutDirty = true;
+    if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+    if (g_hwndSttPopover && IsWindow(g_hwndSttPopover)) {
+        InvalidateRect(g_hwndSttPopover, nullptr, FALSE);
+    }
+}
+
+void ResumeSpeechToTextMode() {
+    if (!g_sttModeActive || !g_sttPaused) return;
+    g_sttPaused = false;
+    if (g_voiceRecorder) {
+        g_voiceRecorder->StartRecording();
+    }
+    {
+        std::lock_guard lock(g_stateMutex);
+        g_state.speechToText.recording = true;
+    }
+    g_layoutDirty = true;
+    if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+    if (g_sttLiveService) {
+        g_sttLiveService->Start();
+    }
+    if (g_hwndSttPopover && IsWindow(g_hwndSttPopover)) {
+        InvalidateRect(g_hwndSttPopover, nullptr, FALSE);
+    }
+}
+
+void StartSpeechToTextMode() {
+    if (g_sttModeActive) return;
+    g_sttModeActive = true;
+    g_sttPaused = false;
+    g_sttStartTick = GetTickCount64();
+
+    {
+        std::lock_guard lock(g_stateMutex);
+        g_wasMediaPlaying = g_state.media.playing;
+    }
+    if (g_wasMediaPlaying) {
+        keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0);
+        keybd_event(VK_MEDIA_PLAY_PAUSE, 0, KEYEVENTF_KEYUP, 0);
+    }
+
+    if (g_wakeWordListener) {
+        g_wakeWordListener->Stop();
+    }
+
+    if (g_voiceRecorder) {
+        g_voiceRecorder->StartRecording();
+    }
+
+    {
+        std::lock_guard lock(g_stateMutex);
+        g_state.speechToText.active = true;
+        g_state.speechToText.recording = true;
+        g_state.speechToText.transcript = L"";
+        g_state.speechToText.durationSec = 0;
+    }
+    g_layoutDirty = true;
+    if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+
+    if (g_sttLiveService) {
+        g_sttLiveService->SetCallback([](const std::wstring& text) {
+            {
+                std::lock_guard lock(g_stateMutex);
+                g_state.speechToText.transcript = text;
+            }
+            g_layoutDirty = true;
+            if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+            if (g_hwndSttPopover && IsWindow(g_hwndSttPopover)) {
+                InvalidateRect(g_hwndSttPopover, nullptr, FALSE);
+            }
+        });
+        g_sttLiveService->Start();
+    }
+
+    ShowSttPopoverWindow();
+}
+
+void StopSpeechToTextMode() {
+    if (!g_sttModeActive) return;
+    g_sttModeActive = false;
+    g_sttPaused = false;
+
+    if (g_sttLiveService) {
+        g_sttLiveService->Stop();
+    }
+
+    if (g_voiceRecorder) {
+        g_voiceRecorder->StopRecording();
+    }
+
+    if (g_hwndSttPopover && IsWindow(g_hwndSttPopover)) {
+        ShowWindow(g_hwndSttPopover, SW_HIDE);
+    }
+
+    if (g_wasMediaPlaying) {
+        keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0);
+        keybd_event(VK_MEDIA_PLAY_PAUSE, 0, KEYEVENTF_KEYUP, 0);
+        g_wasMediaPlaying = false;
+    }
+
+    {
+        std::lock_guard lock(g_stateMutex);
+        g_state.speechToText.active = false;
+        g_state.speechToText.recording = false;
+    }
+    g_layoutDirty = true;
+    if (g_hwnd) InvalidateRect(g_hwnd, nullptr, FALSE);
+
+    if (g_wakeWordListener && g_settings.voiceWakeWordEnabled) {
+        g_wakeWordListener->Start(g_settings.voiceWakeWord);
+    }
+}
 
 }  // namespace
 
 BOOL WhTool_ModInit() {
     LoadSettings();
 
+    g_voiceRecorder = new ai::WasapiAudioCapture();
+    g_voiceRecorder->SetPushWaveformCallback([](float amp) {
+        PushWaveformSample(amp);
+    });
+    g_sttService = new ai::WinrtSpeechToText();
+    g_sttLiveService = new ai::SttLiveDictationService();
+    g_ttsService = new ai::SapiTextToSpeech();
+    g_wakeWordListener = new ai::WakeWordListener();
+    g_wakeWordListener->SetCallback([]() {
+        TriggerWakeWordActivation();
+    });
+    g_intentRouter = new ai::IntentRouter();
+    g_pluginManager = new ai::PluginManager();
+    g_aiService = new ai::OpenRouterAIService();
+    g_contextManager = new ai::ContextManager();
+
+    ai::AppsSkill::onStartStt = []() { StartSpeechToTextMode(); };
+    ai::AppsSkill::onSetMiniPill = [](int idx) { g_idleMiniPillIndex = idx; };
+
+    g_pluginManager->RegisterSkill(std::make_shared<ai::AppsSkill>());
+    g_pluginManager->RegisterSkill(std::make_shared<ai::SystemSkill>());
+    g_pluginManager->RegisterSkill(std::make_shared<ai::CustomSpotifySkill>());
+
     if (!StartThreads()) {
         StopThreads();
         return FALSE;
+    }
+
+    if (g_settings.voiceWakeWordEnabled) {
+        g_wakeWordListener->Start(g_settings.voiceWakeWord);
     }
 
     g_layoutDirty = true;
@@ -5077,6 +6268,25 @@ void WhTool_ModUninit() {
         PostMessageW(g_hwnd, WM_CLOSE, 0, 0);
     }
     StopThreads();
+
+    if (g_sttModeActive) {
+        StopSpeechToTextMode();
+    }
+
+    if (g_wakeWordListener) {
+        g_wakeWordListener->Stop();
+    }
+
+    delete g_voiceRecorder; g_voiceRecorder = nullptr;
+    delete g_sttService; g_sttService = nullptr;
+    delete g_sttLiveService; g_sttLiveService = nullptr;
+    delete g_ttsService; g_ttsService = nullptr;
+    delete g_wakeWordListener; g_wakeWordListener = nullptr;
+    delete g_intentRouter; g_intentRouter = nullptr;
+    delete g_pluginManager; g_pluginManager = nullptr;
+    delete g_aiService; g_aiService = nullptr;
+    delete g_contextManager; g_contextManager = nullptr;
+
     Wh_Log(L"Dynamic Island for Windows unloaded.");
 }
 
@@ -5771,6 +6981,12 @@ HWND g_hwndSplitMode = nullptr;
 HWND g_hwndStartup = nullptr;
 HWND g_hwndAirPodsMode = nullptr;
 HWND g_hwndAccentBrightness = nullptr;
+HWND g_hwndEnableStt = nullptr;
+HWND g_hwndSttLive = nullptr;
+HWND g_hwndEnableMiniPillNav = nullptr;
+HWND g_hwndEnableAssistant = nullptr;
+HWND g_hwndEnableWakeWord = nullptr;
+HWND g_hwndTransparency = nullptr;
 
 LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
@@ -5792,6 +7008,7 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
             std::wstring hide = GetStringSettingCopy(L"Appearance.AutoHideIdleSeconds");
             std::wstring accentColorMode = GetStringSettingCopy(L"Themes.AccentColorMode");
             if (accentColorMode.empty()) accentColorMode = L"auto";
+            std::wstring apMode = GetStringSettingCopy(L"Modules.AirPodsMode");
             int onTop = Wh_GetIntSetting(L"Appearance.AlwaysOnTop");
             int expand = Wh_GetIntSetting(L"Appearance.ExpandOnHover");
             int w11 = Wh_GetIntSetting(L"Appearance.W11Style");
@@ -5802,6 +7019,11 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
             int expandTrack = Wh_GetIntSetting(L"Appearance.ExpandOnTrackChange");
             int splitMode = Wh_GetIntSetting(L"Appearance.SplitMode");
             int accentBrightness = Wh_GetIntSetting(L"Themes.AccentBrightness");
+            int enableStt = Wh_GetIntSetting(L"Modules.EnableSpeechToText");
+            int sttLive = Wh_GetIntSetting(L"SpeechToText.LiveTranscription");
+            int miniNav = Wh_GetIntSetting(L"Modules.EnableMiniPillNav");
+            int assistant = Wh_GetIntSetting(L"Assistant.EnableAssistant");
+            int wakeWord = Wh_GetIntSetting(L"VoiceAssistant.EnableWakeWord");
 
             g_hFont = CreateFontW(-12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                                   OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
@@ -5836,9 +7058,19 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
                 return ctrl;
             };
 
-            // --- Column 1: Appearance & Colors ---
-            AddLabel(L"Position:", x, y, labelWidth);
-            g_hwndPos = AddComboBox(x + labelWidth, y, controlWidth, 200);
+            auto AddGroupBox = [&](const wchar_t* title, int xPos, int yPos, int w, int h) {
+                HWND group = CreateWindowExW(0, L"BUTTON", title, WS_CHILD | WS_VISIBLE | BS_GROUPBOX, xPos, yPos, w, h, hwnd, nullptr, GetModuleHandle(nullptr), nullptr);
+                SendMessageW(group, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+                return group;
+            };
+
+            // Section 1: Appearance & Theme (x=15, y=10, w=315, h=265)
+            AddGroupBox(L"  Appearance & Theme  ", 15, 10, 315, 265);
+            int gx1 = 25, gy1 = 30;
+            int gLabelW = 100, gCtrlW = 190, gRowH = 28;
+
+            AddLabel(L"Position:", gx1, gy1, gLabelW);
+            g_hwndPos = AddComboBox(gx1 + gLabelW, gy1, gCtrlW, 200);
             SendMessageW(g_hwndPos, CB_ADDSTRING, 0, (LPARAM)L"Top Center");
             SendMessageW(g_hwndPos, CB_ADDSTRING, 0, (LPARAM)L"Top Left");
             SendMessageW(g_hwndPos, CB_ADDSTRING, 0, (LPARAM)L"Top Right");
@@ -5848,9 +7080,9 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
             else if (pos == L"bottom-center") SendMessageW(g_hwndPos, CB_SETCURSEL, 3, 0);
             else SendMessageW(g_hwndPos, CB_SETCURSEL, 0, 0);
 
-            y += rowHeight;
-            AddLabel(L"Size Scale:", x, y, labelWidth);
-            g_hwndScale = AddComboBox(x + labelWidth, y, controlWidth, 200);
+            gy1 += gRowH;
+            AddLabel(L"Size Scale:", gx1, gy1, gLabelW);
+            g_hwndScale = AddComboBox(gx1 + gLabelW, gy1, gCtrlW, 200);
             const wchar_t* scales[] = { L"0.8", L"1.0", L"1.2", L"1.5", L"1.8", L"2.0", L"2.5" };
             int scaleSel = 1;
             for (int i = 0; i < 7; i++) {
@@ -5859,9 +7091,9 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
             }
             SendMessageW(g_hwndScale, CB_SETCURSEL, scaleSel, 0);
 
-            y += rowHeight;
-            AddLabel(L"Theme Preset:", x, y, labelWidth);
-            g_hwndTheme = AddComboBox(x + labelWidth, y, controlWidth, 200);
+            gy1 += gRowH;
+            AddLabel(L"Theme Preset:", gx1, gy1, gLabelW);
+            g_hwndTheme = AddComboBox(gx1 + gLabelW, gy1, gCtrlW, 200);
             SendMessageW(g_hwndTheme, CB_ADDSTRING, 0, (LPARAM)L"Apple Style");
             SendMessageW(g_hwndTheme, CB_ADDSTRING, 0, (LPARAM)L"OLED Black");
             SendMessageW(g_hwndTheme, CB_ADDSTRING, 0, (LPARAM)L"Dark Gray");
@@ -5877,9 +7109,18 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
             SendMessageW(g_hwndTheme, CB_ADDSTRING, 0, (LPARAM)L"Custom Color");
             SendMessageW(g_hwndTheme, CB_SETCURSEL, (theme >= 0 && theme < 12) ? theme : 12, 0);
 
-            y += rowHeight;
-            AddLabel(L"Auto-Hide Idle:", x, y, labelWidth);
-            g_hwndHide = AddComboBox(x + labelWidth, y, controlWidth, 200);
+            gy1 += gRowH;
+            AddLabel(L"Transparency:", gx1, gy1, gLabelW);
+            g_hwndTransparency = AddComboBox(gx1 + gLabelW, gy1, gCtrlW, 200);
+            SendMessageW(g_hwndTransparency, CB_ADDSTRING, 0, (LPARAM)L"100% Opaque");
+            SendMessageW(g_hwndTransparency, CB_ADDSTRING, 0, (LPARAM)L"85% Glass");
+            SendMessageW(g_hwndTransparency, CB_ADDSTRING, 0, (LPARAM)L"70% Translucent");
+            SendMessageW(g_hwndTransparency, CB_ADDSTRING, 0, (LPARAM)L"55% Clear");
+            SendMessageW(g_hwndTransparency, CB_SETCURSEL, 1, 0);
+
+            gy1 += gRowH;
+            AddLabel(L"Auto-Hide:", gx1, gy1, gLabelW);
+            g_hwndHide = AddComboBox(gx1 + gLabelW, gy1, gCtrlW, 200);
             SendMessageW(g_hwndHide, CB_ADDSTRING, 0, (LPARAM)L"Never");
             SendMessageW(g_hwndHide, CB_ADDSTRING, 0, (LPARAM)L"Instant");
             SendMessageW(g_hwndHide, CB_ADDSTRING, 0, (LPARAM)L"5 Seconds");
@@ -5894,138 +7135,115 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
             else if (hide == L"60") hideSel = 5;
             SendMessageW(g_hwndHide, CB_SETCURSEL, hideSel, 0);
 
-            y += rowHeight;
-            AddLabel(L"Offset X (px):", x, y, labelWidth);
-            wchar_t offXStr[32];
-            swprintf_s(offXStr, L"%d", offsetX);
-            g_hwndOffsetX = AddEdit(offXStr, x + labelWidth, y, controlWidth);
-
-            y += rowHeight;
-            AddLabel(L"Offset Y (px):", x, y, labelWidth);
-            wchar_t offYStr[32];
-            swprintf_s(offYStr, L"%d", offsetY);
-            g_hwndOffsetY = AddEdit(offYStr, x + labelWidth, y, controlWidth);
-
-            y += rowHeight;
-            AddLabel(L"Weather City:", x, y, labelWidth);
-            g_hwndCity = AddEdit(city.c_str(), x + labelWidth, y, controlWidth);
-
-            y += rowHeight;
-            AddLabel(L"Accent Mode:", x, y, labelWidth);
-            g_hwndAccentMode = AddComboBox(x + labelWidth, y, controlWidth, 200);
-            SendMessageW(g_hwndAccentMode, CB_ADDSTRING, 0, (LPARAM)L"Auto (Album Art)");
-            SendMessageW(g_hwndAccentMode, CB_ADDSTRING, 0, (LPARAM)L"System Accent");
-            SendMessageW(g_hwndAccentMode, CB_ADDSTRING, 0, (LPARAM)L"Custom Color");
-            if (EqualsNoCase(accentColorMode, L"system")) {
-                SendMessageW(g_hwndAccentMode, CB_SETCURSEL, 1, 0);
-            } else if (EqualsNoCase(accentColorMode, L"custom")) {
-                SendMessageW(g_hwndAccentMode, CB_SETCURSEL, 2, 0);
-            } else {
-                SendMessageW(g_hwndAccentMode, CB_SETCURSEL, 0, 0);
-            }
-
-            // --- Column 2: Modules & Behavior ---
-            int x2 = 350;
-            int y2 = 20;
-            int col2Width = 200;
-
-            g_hwndMedia = AddCheckbox(L"Media Player Module", media != 0, x2, y2, col2Width);
-            y2 += rowHeight - 4;
-            g_hwndClip = AddCheckbox(L"Clipboard Module", clip != 0, x2, y2, col2Width);
-            y2 += rowHeight - 4;
-            g_hwndBat = AddCheckbox(L"Battery Module", bat != 0, x2, y2, col2Width);
-            y2 += rowHeight - 4;
-            g_hwndProg = AddCheckbox(L"Progress Module", prog != 0, x2, y2, col2Width);
-            y2 += rowHeight - 4;
-            g_hwndGame = AddCheckbox(L"Enable Game Overlay", game != 0, x2, y2, col2Width);
-            y2 += rowHeight - 4;
-            g_hwndMetric = AddCheckbox(L"Show Labels in Metric Chips", metric != 0, x2, y2, col2Width);
-            y2 += rowHeight - 4;
-            g_hwndDpi = AddCheckbox(L"Auto DPI Scaling", autoDpi != 0, x2, y2, col2Width);
-            y2 += rowHeight - 4;
-            g_hwndOnTop = AddCheckbox(L"Always On Top", onTop != 0, x2, y2, col2Width);
-            y2 += rowHeight - 4;
-            g_hwndExpand = AddCheckbox(L"Expand on Hover", expand != 0, x2, y2, col2Width);
-            y2 += rowHeight - 4;
-            g_hwndW11 = AddCheckbox(L"Native Windows 11 Style", w11 != 0, x2, y2, col2Width);
-            y2 += rowHeight - 4;
-            g_hwndFahr = AddCheckbox(L"Use Fahrenheit for Weather", fahr != 0, x2, y2, col2Width);
-            y2 += rowHeight - 4;
-            g_hwndColorful = AddCheckbox(L"Enable Multi-Color Modules", colorful != 0, x2, y2, col2Width);
-
-            // --- Color Picker buttons (Column 1, after existing controls) ---
-            // Find Y below the existing column-1 controls (after Weather City row)
-            int ycp = y + rowHeight + 10;
-            AddLabel(L"Accent Color:", x, ycp, labelWidth);
+            gy1 += gRowH;
+            AddLabel(L"Accent Color:", gx1, gy1, gLabelW);
             std::wstring accentHex = GetStringSettingCopy(L"Themes.CustomAccentHex");
             if (accentHex.empty()) accentHex = L"#00E5FF";
-            HWND g_hwndAccentEdit = AddEdit(accentHex.c_str(), x + labelWidth, ycp, 110);
+            HWND g_hwndAccentEdit = AddEdit(accentHex.c_str(), gx1 + gLabelW, gy1, 125);
             SetWindowLongPtrW(g_hwndAccentEdit, GWLP_ID, 2010);
-            HWND btnAccent = CreateWindowExW(0, L"BUTTON", L"Pick",
-                WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON|WS_TABSTOP,
-                x + labelWidth + 115, ycp, 50, 22,
-                hwnd, (HMENU)2011, GetModuleHandle(nullptr), nullptr);
+            HWND btnAccent = CreateWindowExW(0, L"BUTTON", L"Pick", WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON|WS_TABSTOP, gx1 + gLabelW + 130, gy1, 60, 22, hwnd, (HMENU)2011, GetModuleHandle(nullptr), nullptr);
             SendMessageW(btnAccent, WM_SETFONT, (WPARAM)g_hFont, TRUE);
 
-            ycp += rowHeight;
-            AddLabel(L"BG Color:", x, ycp, labelWidth);
+            gy1 += gRowH;
+            AddLabel(L"BG Color:", gx1, gy1, gLabelW);
             std::wstring bgHex = GetStringSettingCopy(L"Themes.PillBgColor");
             if (bgHex.empty()) bgHex = L"#0D0D0F";
-            HWND g_hwndBgEdit = AddEdit(bgHex.c_str(), x + labelWidth, ycp, 110);
+            HWND g_hwndBgEdit = AddEdit(bgHex.c_str(), gx1 + gLabelW, gy1, 125);
             SetWindowLongPtrW(g_hwndBgEdit, GWLP_ID, 2012);
-            HWND btnBg = CreateWindowExW(0, L"BUTTON", L"Pick",
-                WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON|WS_TABSTOP,
-                x + labelWidth + 115, ycp, 50, 22,
-                hwnd, (HMENU)2013, GetModuleHandle(nullptr), nullptr);
+            HWND btnBg = CreateWindowExW(0, L"BUTTON", L"Pick", WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON|WS_TABSTOP, gx1 + gLabelW + 130, gy1, 60, 22, hwnd, (HMENU)2013, GetModuleHandle(nullptr), nullptr);
             SendMessageW(btnBg, WM_SETFONT, (WPARAM)g_hFont, TRUE);
 
-            ycp += rowHeight;
-            AddLabel(L"AirPods Popup:", x, ycp, labelWidth);
-            g_hwndAirPodsMode = AddComboBox(x + labelWidth, ycp, controlWidth, 200);
-            SendMessageW(g_hwndAirPodsMode, CB_ADDSTRING, 0, (LPARAM)L"Both (Small / Hover Big)");
-            SendMessageW(g_hwndAirPodsMode, CB_ADDSTRING, 0, (LPARAM)L"Small Version Only");
-            SendMessageW(g_hwndAirPodsMode, CB_ADDSTRING, 0, (LPARAM)L"Bigger Version Only");
-            std::wstring apMode = GetStringSettingCopy(L"Modules.AirPodsMode");
-            if (EqualsNoCase(apMode, L"small")) {
-                SendMessageW(g_hwndAirPodsMode, CB_SETCURSEL, 1, 0);
-            } else if (EqualsNoCase(apMode, L"bigger")) {
-                SendMessageW(g_hwndAirPodsMode, CB_SETCURSEL, 2, 0);
-            } else {
-                SendMessageW(g_hwndAirPodsMode, CB_SETCURSEL, 0, 0);
-            }
+            gy1 += gRowH;
+            AddLabel(L"Weather City:", gx1, gy1, gLabelW);
+            g_hwndCity = AddEdit(city.c_str(), gx1 + gLabelW, gy1, gCtrlW);
 
-            ycp += rowHeight;
-            AddLabel(L"Accent Brightness:", x, ycp, labelWidth);
-            g_hwndAccentBrightness = AddComboBox(x + labelWidth, ycp, controlWidth, 200);
-            SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"0% Boost (Normal)");
+            // Section 2: Voice & Speech Assistant (x=345, y=10, w=315, h=265)
+            AddGroupBox(L"  Speech & Voice Assistant  ", 345, 10, 315, 265);
+            int gx2 = 355, gy2 = 32;
+            int gCol2W = 295;
+
+            g_hwndEnableStt = AddCheckbox(L"Enable Speech-to-Text Feature", enableStt != 0, gx2, gy2, gCol2W);
+            gy2 += gRowH;
+            g_hwndSttLive = AddCheckbox(L"Live Real-Time Dictation Stream", sttLive != 0, gx2, gy2, gCol2W);
+            gy2 += gRowH;
+            g_hwndEnableAssistant = AddCheckbox(L"Enable Voice Assistant Mode", assistant != 0, gx2, gy2, gCol2W);
+            gy2 += gRowH;
+            g_hwndEnableWakeWord = AddCheckbox(L"Enable Wake Word (\"Hey Jarvis\")", wakeWord != 0, gx2, gy2, gCol2W);
+            gy2 += gRowH;
+            AddLabel(L"Accent Brightness:", gx2, gy2, 110);
+            g_hwndAccentBrightness = AddComboBox(gx2 + 110, gy2, 175, 200);
+            SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"Normal (0%)");
             SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"10% Boost");
             SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"25% Boost");
-            SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"40% Boost");
             SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"50% Boost");
-            SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"75% Boost");
-            SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"100% Boost (Max)");
+            SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"100% Max Boost");
             int abSel = 0;
             if (accentBrightness == 10) abSel = 1;
             else if (accentBrightness == 25) abSel = 2;
-            else if (accentBrightness == 40) abSel = 3;
-            else if (accentBrightness == 50) abSel = 4;
-            else if (accentBrightness == 75) abSel = 5;
-            else if (accentBrightness == 100) abSel = 6;
+            else if (accentBrightness == 50) abSel = 3;
+            else if (accentBrightness == 100) abSel = 4;
             SendMessageW(g_hwndAccentBrightness, CB_SETCURSEL, abSel, 0);
 
-            y2 += rowHeight - 4;
-            g_hwndExpandTrack = AddCheckbox(L"Expand on Track Change", expandTrack != 0, x2, y2, col2Width);
-            y2 += rowHeight - 4;
-            g_hwndSplitMode = AddCheckbox(L"Enable Split Mode (Multiple Events)", splitMode != 0, x2, y2, col2Width);
-            y2 += rowHeight - 4;
-            g_hwndStartup = AddCheckbox(L"Start with Windows", IsStartupRegistryEnabled(), x2, y2, col2Width);
+            gy2 += gRowH;
+            AddLabel(L"AirPods Popup:", gx2, gy2, 110);
+            g_hwndAirPodsMode = AddComboBox(gx2 + 110, gy2, 175, 200);
+            SendMessageW(g_hwndAirPodsMode, CB_ADDSTRING, 0, (LPARAM)L"Both (Small ➔ Large)");
+            SendMessageW(g_hwndAirPodsMode, CB_ADDSTRING, 0, (LPARAM)L"Small Only");
+            SendMessageW(g_hwndAirPodsMode, CB_ADDSTRING, 0, (LPARAM)L"Large Only");
+            int apModeSel = 0;
+            if (apMode == L"small") apModeSel = 1;
+            else if (apMode == L"bigger") apModeSel = 2;
+            SendMessageW(g_hwndAirPodsMode, CB_SETCURSEL, apModeSel, 0);
 
-            // Buttons at the bottom
-            int btnY = 415;
-            HWND btnSave = CreateWindowExW(0, L"BUTTON", L"Save Settings", WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON | WS_TABSTOP, 180, btnY, 110, 28, hwnd, (HMENU)IDOK, GetModuleHandle(nullptr), nullptr);
+            // Section 3: Modules & Mini-Pills (x=15, y=285, w=315, h=260)
+            AddGroupBox(L"  Modules & Navigation  ", 15, 285, 315, 260);
+            int gx3 = 25, gy3 = 307;
+
+            g_hwndEnableMiniPillNav = AddCheckbox(L"Enable Mini Pill Carousel", miniNav != 0, gx3, gy3, gCol2W);
+            gy3 += gRowH - 4;
+            g_hwndMedia = AddCheckbox(L"Media Player Module", media != 0, gx3, gy3, gCol2W);
+            gy3 += gRowH - 4;
+            g_hwndClip = AddCheckbox(L"Clipboard Module", clip != 0, gx3, gy3, gCol2W);
+            gy3 += gRowH - 4;
+            g_hwndBat = AddCheckbox(L"Battery Module", bat != 0, gx3, gy3, gCol2W);
+            gy3 += gRowH - 4;
+            g_hwndProg = AddCheckbox(L"Progress Module", prog != 0, gx3, gy3, gCol2W);
+            gy3 += gRowH - 4;
+            g_hwndGame = AddCheckbox(L"Enable Game Overlay", game != 0, gx3, gy3, gCol2W);
+            gy3 += gRowH - 4;
+            g_hwndFahr = AddCheckbox(L"Use Fahrenheit for Weather", fahr != 0, gx3, gy3, gCol2W);
+            gy3 += gRowH - 4;
+            g_hwndColorful = AddCheckbox(L"Enable Multi-Color Modules", colorful != 0, gx3, gy3, gCol2W);
+
+            // Section 4: Behavior & System (x=345, y=285, w=315, h=260)
+            AddGroupBox(L"  Window & System Behavior  ", 345, 285, 315, 260);
+            int gx4 = 355, gy4 = 307;
+
+            g_hwndOnTop = AddCheckbox(L"Always On Top", onTop != 0, gx4, gy4, gCol2W);
+            gy4 += gRowH - 4;
+            g_hwndExpand = AddCheckbox(L"Expand on Hover", expand != 0, gx4, gy4, gCol2W);
+            gy4 += gRowH - 4;
+            g_hwndExpandTrack = AddCheckbox(L"Expand on Track Change", expandTrack != 0, gx4, gy4, gCol2W);
+            gy4 += gRowH - 4;
+            g_hwndW11 = AddCheckbox(L"Native Windows 11 Style", w11 != 0, gx4, gy4, gCol2W);
+            gy4 += gRowH - 4;
+            g_hwndDpi = AddCheckbox(L"Auto DPI Scaling", autoDpi != 0, gx4, gy4, gCol2W);
+            gy4 += gRowH - 4;
+            g_hwndSplitMode = AddCheckbox(L"Enable Split Mode", splitMode != 0, gx4, gy4, gCol2W);
+            gy4 += gRowH - 4;
+            g_hwndMetric = AddCheckbox(L"Show Labels in Metric Chips", metric != 0, gx4, gy4, gCol2W);
+            gy4 += gRowH - 4;
+            g_hwndStartup = AddCheckbox(L"Start with Windows", IsStartupRegistryEnabled(), gx4, gy4, gCol2W);
+
+            // Action Buttons at bottom
+            int btnY = 560;
+            HWND btnSave = CreateWindowExW(0, L"BUTTON", L"Save Settings", WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON | WS_TABSTOP, 180, btnY, 120, 32, hwnd, (HMENU)IDOK, GetModuleHandle(nullptr), nullptr);
             SendMessageW(btnSave, WM_SETFONT, (WPARAM)g_hFont, TRUE);
 
-            HWND btnCancel = CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP, 300, btnY, 110, 28, hwnd, (HMENU)IDCANCEL, GetModuleHandle(nullptr), nullptr);
+            HWND btnReset = CreateWindowExW(0, L"BUTTON", L"Reset Defaults", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP, 315, btnY, 120, 32, hwnd, (HMENU)2020, GetModuleHandle(nullptr), nullptr);
+            SendMessageW(btnReset, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+            HWND btnCancel = CreateWindowExW(0, L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP, 450, btnY, 110, 32, hwnd, (HMENU)IDCANCEL, GetModuleHandle(nullptr), nullptr);
             SendMessageW(btnCancel, WM_SETFONT, (WPARAM)g_hFont, TRUE);
 
             break;
@@ -6100,10 +7318,8 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
                 int abVal = 0;
                 if (abSel == 1) abVal = 10;
                 else if (abSel == 2) abVal = 25;
-                else if (abSel == 3) abVal = 40;
-                else if (abSel == 4) abVal = 50;
-                else if (abSel == 5) abVal = 75;
-                else if (abSel == 6) abVal = 100;
+                else if (abSel == 3) abVal = 50;
+                else if (abSel == 4) abVal = 100;
                 wchar_t abValStr[16];swprintf_s(abValStr, L"%d", abVal);
                 WritePrivateProfileStringW(L"Settings", L"Themes.AccentBrightness", abValStr, GetIniPath().c_str());
 
@@ -6143,11 +7359,16 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
                 WriteCheck(g_hwndColorful, L"Themes.ColorfulModules");
                 WriteCheck(g_hwndExpandTrack, L"Appearance.ExpandOnTrackChange");
                 WriteCheck(g_hwndSplitMode, L"Appearance.SplitMode");
+                WriteCheck(g_hwndEnableStt, L"Modules.EnableSpeechToText");
+                WriteCheck(g_hwndSttLive, L"SpeechToText.LiveTranscription");
+                WriteCheck(g_hwndEnableMiniPillNav, L"Modules.EnableMiniPillNav");
+                WriteCheck(g_hwndEnableAssistant, L"Assistant.EnableAssistant");
+                WriteCheck(g_hwndEnableWakeWord, L"VoiceAssistant.EnableWakeWord");
 
                 bool startupChecked = (SendMessage(g_hwndStartup, BM_GETCHECK, 0, 0) == BST_CHECKED);
                 SetStartupRegistry(startupChecked);
                 WriteCheck(g_hwndStartup, L"Appearance.StartWithWindows");
-
+                Wh_SetIntValue(L"ExpandOnHoverOverride", -1);
                 LoadSettings();
                 g_layoutDirty = true;
                 if (g_hwnd) {
@@ -6156,6 +7377,12 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 
                 DestroyWindow(hwnd);
             } else if (wmId == IDCANCEL) {
+                DestroyWindow(hwnd);
+            } else if (wmId == 2020) {
+                DeleteFileW(GetIniPath().c_str());
+                LoadSettings();
+                g_layoutDirty = true;
+                if (g_hwnd) InvalidateRect(g_hwnd, nullptr, TRUE);
                 DestroyWindow(hwnd);
             } else if (wmId == 2011 || wmId == 2013) {
                 // "Pick" button for Accent (2011) or BG (2013)
@@ -6271,7 +7498,7 @@ void OpenSettingsDialog(HWND parent) {
     wcx.hbrBackground = (HBRUSH)COLOR_WINDOW;
     RegisterClassExW(&wcx);
 
-    int width = 600, height = 495;
+    int width = 680, height = 620;
     int screenWidth = GetSystemMetrics(SM_CXSCREEN);
     int screenHeight = GetSystemMetrics(SM_CYSCREEN);
     int x = (screenWidth - width) / 2;
@@ -6290,15 +7517,40 @@ void OpenSettingsDialog(HWND parent) {
 
 // Entry point for standalone application
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
-    // Check if another instance is already running
-    HANDLE hMutex = CreateMutex(nullptr, TRUE, L"DynamicIslandStandaloneMutex");
+    // Check if another instance is already running; if so, kill it and take over
+    HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"DynamicIslandStandaloneMutex");
+    if (GetLastError() == ERROR_ALREADY_EXISTS) {
+        if (hMutex) CloseHandle(hMutex);
+
+        // Kill existing DynamicIsland.exe processes and wait for them to exit
+        HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (hSnap != INVALID_HANDLE_VALUE) {
+            PROCESSENTRY32W pe = {};
+            pe.dwSize = sizeof(pe);
+            if (Process32FirstW(hSnap, &pe)) {
+                do {
+                    if (_wcsicmp(pe.szExeFile, L"DynamicIsland.exe") == 0 &&
+                        pe.th32ProcessID != GetCurrentProcessId()) {
+                        HANDLE hProc = OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE, FALSE, pe.th32ProcessID);
+                        if (hProc) {
+                            TerminateProcess(hProc, 0);
+                            WaitForSingleObject(hProc, 2000);
+                            CloseHandle(hProc);
+                        }
+                    }
+                } while (Process32NextW(hSnap, &pe));
+            }
+            CloseHandle(hSnap);
+        }
+
+        Sleep(200);
+
+        // Re-acquire the mutex for ourselves
+        hMutex = CreateMutexW(nullptr, TRUE, L"DynamicIslandStandaloneMutex");
+    }
+
     if (!hMutex) {
         return 1;
-    }
-    if (GetLastError() == ERROR_ALREADY_EXISTS) {
-        MessageBoxW(nullptr, L"Dynamic Island is already running.", L"Dynamic Island", MB_OK | MB_ICONINFORMATION);
-        CloseHandle(hMutex);
-        return 0;
     }
 
     // Call standard mod initialization
