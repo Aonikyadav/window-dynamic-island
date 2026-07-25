@@ -1,0 +1,16 @@
+.statItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.number {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--rose-primary);
+  font-family: var(--font-display);
+}
+
+.label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}

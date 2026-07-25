@@ -1,0 +1,127 @@
+.controls {
+  background: var(--bg-card);
+  border: 1px solid var(--border-neon);
+  padding: 2.2rem;
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+}
+
+.title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.6rem;
+  font-family: var(--font-display);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.8rem;
+  margin-bottom: 2rem;
+}
+
+.ctrlBtn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-bright);
+  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ctrlBtn i {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  transition: color 0.3s ease;
+}
+
+.ctrlBtn:hover {
+  background: var(--rose-glow-subtle);
+  border-color: rgba(255, 42, 133, 0.3);
+}
+
+.ctrlBtnActive {
+  background: rgba(255, 42, 133, 0.12);
+  border-color: var(--rose-primary);
+  box-shadow: 0 0 12px rgba(255, 42, 133, 0.2);
+}
+
+.ctrlBtnActive i {
+  color: var(--rose-primary);
+}
+
+.options {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 1.8rem;
+}
+
+.optionsTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 1.2rem;
+  color: var(--text-bright);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.row label {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.row input[type="range"] {
+  width: 140px;
+  height: 4px;
+  border-radius: 99px;
+  accent-color: var(--rose-primary);
+  cursor: pointer;
+}
+
+.sliderVal {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--rose-primary);
+  width: 45px;
+  text-align: right;
+}
+
+.themeGrid {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.themeDot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.themeDot:hover {
+  transform: scale(1.15);
+}
+
+.themeDotActive {
+  border-color: #fff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+}

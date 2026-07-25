@@ -1,0 +1,25 @@
+.section {
+  padding: 6rem 2rem;
+  background: linear-gradient(180deg, var(--bg-void) 0%, #0c0614 50%, var(--bg-void) 100%);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.header {
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto 4.5rem;
+}
+
+.header h2 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 1rem;
+  font-family: var(--font-display);
+}
+
+.header p {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}

@@ -1,0 +1,47 @@
+/* ==========================================================================
+   GOKU BLACK ROSÉ / CYBER OF X DESIGN TOKENS
+   ========================================================================== */
+
+:root {
+  /* Color Palette - Dark Void & Cyber Rosé */
+  --bg-void: #06030a;
+  --bg-darker: #09040e;
+  --bg-card: rgba(14, 7, 22, 0.75);
+  --bg-card-hover: rgba(22, 10, 35, 0.85);
+  --bg-glass: rgba(18, 9, 28, 0.65);
+  
+  /* Primary Rosé & Secondary Violet */
+  --rose-primary: #ff2a85;
+  --rose-light: #ff60a8;
+  --rose-glow: rgba(255, 42, 133, 0.45);
+  --rose-glow-subtle: rgba(255, 42, 133, 0.15);
+  
+  --violet-primary: #8c1aff;
+  --violet-light: #b366ff;
+  --violet-glow: rgba(140, 26, 255, 0.4);
+  
+  /* Accents & Status */
+  --cyan-accent: #00e5ff;
+  --yellow-accent: #ffd23f;
+  --green-accent: #00c7a6;
+  
+  /* Typography Colors */
+  --text-bright: #f7f7f9;
+  --text-main: #e2dedf;
+  --text-muted: #9a92a6;
+  --text-dim: #60596c;
+  
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-neon: rgba(255, 42, 133, 0.25);
+  --border-neon-hover: rgba(255, 42, 133, 0.6);
+  
+  /* Font Families */
+  --font-display: 'Space Grotesk', 'Outfit', sans-serif;
+  --font-sans: 'Outfit', sans-serif;
+  --font-mono: 'Fira Code', monospace;
+  
+  /* Current Active Accent (Dynamic) */
+  --accent: var(--rose-primary);
+  --accent-glow: var(--rose-glow);
+}

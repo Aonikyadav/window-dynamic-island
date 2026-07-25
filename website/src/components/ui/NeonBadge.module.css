@@ -1,0 +1,16 @@
+.badge {
+  background: var(--rose-glow-subtle);
+  border: 1px solid var(--border-neon);
+  color: var(--rose-primary);
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 0.4rem 1rem;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  box-shadow: 0 0 10px rgba(255, 42, 133, 0.1);
+  font-family: var(--font-sans);
+}
