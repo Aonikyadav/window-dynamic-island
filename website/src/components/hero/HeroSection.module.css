@@ -11,7 +11,7 @@
   z-index: 2;
 }
 
-/* High-Contrast Backdrop Title */
+/* High-Contrast Backdrop Title (METAVERSE Style) */
 .giantBgTitle {
   position: absolute;
   top: 8%;
@@ -32,42 +32,39 @@
   text-shadow: 0 0 50px rgba(255, 42, 133, 0.25);
 }
 
-/* Center Live Interactive Mockup */
+/* Seamless Background-Removed Character Centerpiece (Matching Reference Image) */
 .heroVisualCenter {
-  position: relative;
-  z-index: 5;
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: 100%;
-  max-width: 800px;
-  margin: 2.5rem auto 3rem;
+  max-width: 650px;
+  z-index: 3;
+  pointer-events: none;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-.heroFrameContainer {
-  position: relative;
+.heroCutoutImg {
   width: 100%;
-  aspect-ratio: 16 / 9.5;
-  background: radial-gradient(circle at 50% 30%, #220838 0%, #050308 85%);
-  border: 4px solid var(--border-active);
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9), 0 0 45px rgba(255, 42, 133, 0.25);
+  max-height: 520px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 35px rgba(255, 42, 133, 0.45));
   animation: float-hero 6s infinite alternate ease-in-out;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
 }
 
+/* Floating Live Island Pill Overlay */
 .heroIslandPill {
   position: absolute;
-  top: 16px;
+  top: 10px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
   background: #000;
   border: 1.5px solid var(--rose-primary);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8), 0 0 15px var(--rose-glow);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8), 0 0 20px var(--rose-glow);
   color: #fff;
   border-radius: 99px;
   padding: 0.45rem 1.2rem;
@@ -77,6 +74,7 @@
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .spinnerArt {
@@ -114,13 +112,14 @@
   gap: 4rem;
   justify-content: space-between;
   width: 100%;
+  margin-top: 4rem;
 }
 
 .leftCol {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  max-width: 440px;
+  max-width: 420px;
 }
 
 .eyebrow {
@@ -147,7 +146,7 @@
 
 .colDesc {
   font-size: 1.05rem;
-  color: var(--text-main); /* High contrast! */
+  color: var(--text-main);
   line-height: 1.6;
   margin-bottom: 2rem;
 }
@@ -182,7 +181,7 @@
   flex-direction: column;
   align-items: flex-end;
   text-align: right;
-  max-width: 440px;
+  max-width: 420px;
   justify-self: end;
 }
 
@@ -224,30 +223,32 @@
   box-shadow: 0 0 30px var(--rose-glow);
 }
 
-/* Floating Glassmorphic HUD Bar (Bottom) */
+/* Floating Glassmorphic HUD Bar (Fixed Alignment & No Clipping!) */
 .hudBar {
   position: absolute;
   bottom: 20px;
-  left: calc(50% + 30px);
+  left: 50%;
   transform: translateX(-50%);
-  width: calc(100% - 140px);
-  max-width: 1200px;
+  width: min(100% - 40px, 1150px);
   z-index: 20;
-  background: rgba(14, 7, 22, 0.85);
-  border: 1px solid var(--border-active);
+  background: rgba(14, 7, 22, 0.88);
+  border: 1.5px solid var(--border-active);
   border-radius: 20px;
-  padding: 1.2rem 2rem;
+  padding: 1.1rem 1.8rem;
   backdrop-filter: blur(20px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), 0 0 30px rgba(255, 42, 133, 0.2);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), 0 0 35px rgba(255, 42, 133, 0.25);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1.5rem;
 }
 
 .hudMetrics {
   display: flex;
   align-items: center;
-  gap: 3.5rem;
+  gap: 2.2rem; /* Comfortable gap preventing right edge text clipping */
+  flex: 1;
 }
 
 .hudMetricBlock {
@@ -265,26 +266,27 @@
 }
 
 .hudMetricVal {
-  font-size: 1.5rem;
+  font-size: 1.45rem;
   font-weight: 800;
   color: var(--rose-primary);
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  white-space: nowrap;
 }
 
 .hudMetricSub {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
-  max-width: 180px;
   line-height: 1.3;
+  white-space: nowrap;
 }
 
 .hudActionBtn {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(255, 42, 133, 0.12);
+  background: rgba(255, 42, 133, 0.14);
   border: 1.5px solid var(--rose-primary);
   color: var(--rose-primary);
   font-size: 1.2rem;
@@ -294,6 +296,7 @@
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 0 15px rgba(255, 42, 133, 0.3);
+  flex-shrink: 0;
 }
 
 .hudActionBtn:hover {
@@ -307,9 +310,8 @@
   .hero {
     padding-left: 2rem;
   }
-  .hudBar {
-    left: 50%;
-    width: calc(100% - 40px);
+  .hudMetrics {
+    gap: 1.2rem;
   }
   .dualColumns {
     grid-template-columns: 1fr;

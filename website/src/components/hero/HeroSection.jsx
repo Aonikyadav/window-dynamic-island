@@ -50,39 +50,35 @@ export function HeroSection() {
 
   return (
     <section class={styles.hero}>
-      {/* High-Contrast Backdrop Title */}
+      {/* High-Contrast Backdrop Title (METAVERSE Style) */}
       <div class={styles.giantBgTitle}>
         DYNAMIC ISLAND
       </div>
 
-      {/* Centerpiece Visual Simulator Frame */}
+      {/* Seamless Background-Removed Character Centerpiece (home.png) */}
       <div class={styles.heroVisualCenter}>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.92 }}
+        {/* Animated Morphing Pill Floating Above Character */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={pillModes[activePillIndex].id}
+            initial={{ opacity: 0, scale: 0.85, y: -5 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.85, y: 5 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+            class={styles.heroIslandPill}
+          >
+            {pillModes[activePillIndex].content}
+          </motion.div>
+        </AnimatePresence>
+
+        <motion.img
+          initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8 }}
-          class={styles.heroFrameContainer}
-        >
-          {/* Animated Morphing Pill Over Desktop */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pillModes[activePillIndex].id}
-              initial={{ opacity: 0, scale: 0.85, y: -5 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.85, y: 5 }}
-              transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-              class={styles.heroIslandPill}
-            >
-              {pillModes[activePillIndex].content}
-            </motion.div>
-          </AnimatePresence>
-
-          {/* Desktop Wallpaper Mockup */}
-          <div style={{ position: 'absolute', bottom: 15, left: '50%', transform: 'translateX(-50%)', fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.7)', padding: '0.3rem 0.8rem', borderRadius: 99, border: '1px solid var(--border-subtle)' }}>
-            <i class="fa-solid fa-desktop" style={{ color: 'var(--rose-primary)', marginRight: 6 }} />
-            Windows 11 Native Top Overlay
-          </div>
-        </motion.div>
+          src="/assets/home.png"
+          alt="Dynamic Island Goku Black Rosé Character Cutout"
+          class={styles.heroCutoutImg}
+        />
       </div>
 
       {/* Dual Column High-Contrast Content */}
@@ -136,26 +132,26 @@ export function HeroSection() {
         </motion.div>
       </div>
 
-      {/* Floating Glassmorphic HUD Bar (Bottom) */}
+      {/* Floating Glassmorphic HUD Bar (Bottom - Fixed Unclipped Alignment) */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.4 }}
         class={styles.hudBar}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem', flex: 1 }}>
           <RadarScanner />
           <div class={styles.hudMetrics}>
             <div class={styles.hudMetricBlock}>
               <span class={styles.hudMetricTitle}>ACTIVE USERS</span>
               <span class={styles.hudMetricVal}>+15K <span style={{ fontSize: '0.8rem', color: 'var(--text-bright)' }}>DL</span></span>
-              <span class={styles.hudMetricSub}>Active desktop installations worldwide</span>
+              <span class={styles.hudMetricSub}>Active desktop installations</span>
             </div>
 
             <div class={styles.hudMetricBlock}>
               <span class={styles.hudMetricTitle}>PERFORMANCE</span>
               <span class={styles.hudMetricVal}>60 FPS</span>
-              <span class={styles.hudMetricSub}>Direct2D hardware engine with &lt; 0.1% CPU</span>
+              <span class={styles.hudMetricSub}>Direct2D with &lt; 0.1% CPU</span>
             </div>
 
             <div class={styles.hudMetricBlock}>
