@@ -55,30 +55,36 @@ export function HeroSection() {
         DYNAMIC ISLAND
       </div>
 
-      {/* Seamless Background-Removed Character Centerpiece (home.png) */}
+      {/* Featured Desktop Screenshot Showcase (Full-preview.png -> home.png) */}
       <div class={styles.heroVisualCenter}>
-        {/* Animated Morphing Pill Floating Above Character */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={pillModes[activePillIndex].id}
-            initial={{ opacity: 0, scale: 0.85, y: -5 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.85, y: 5 }}
-            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-            class={styles.heroIslandPill}
-          >
-            {pillModes[activePillIndex].content}
-          </motion.div>
-        </AnimatePresence>
-
-        <motion.img
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          src="/assets/home.png"
-          alt="Dynamic Island Goku Black Rosé Character Cutout"
-          class={styles.heroCutoutImg}
-        />
+          class={styles.heroFrameContainer}
+        >
+          {/* Animated Morphing Island Pill Floating Above Desktop */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pillModes[activePillIndex].id}
+              initial={{ opacity: 0, scale: 0.85, y: -5 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.85, y: 5 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+              class={styles.heroIslandPill}
+            >
+              {pillModes[activePillIndex].content}
+            </motion.div>
+          </AnimatePresence>
+
+          <div class={styles.heroFrameInner}>
+            <img
+              src="/assets/home.png?v=3"
+              alt="Dynamic Island Desktop Home Preview"
+              class={styles.heroDesktopImg}
+            />
+          </div>
+        </motion.div>
       </div>
 
       {/* Dual Column High-Contrast Content */}
@@ -132,7 +138,7 @@ export function HeroSection() {
         </motion.div>
       </div>
 
-      {/* Floating Glassmorphic HUD Bar (Bottom - Fixed Unclipped Alignment) */}
+      {/* Floating Glassmorphic HUD Bar (Bottom) */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
