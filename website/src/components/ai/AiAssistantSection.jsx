@@ -3,11 +3,22 @@ import { motion } from 'framer-motion';
 import styles from './AiAssistantSection.module.css';
 
 export function AiAssistantSection() {
+  const [customWakeWord, setCustomWakeWord] = useState('Hey Nova');
+
+  const presetPhrases = [
+    'Hey Jarvis',
+    'Hey Nova',
+    'Computer',
+    'Friday',
+    'Athena',
+    'Hey Baby'
+  ];
+
   const samplePhrases = [
-    "Hey Jarvis, set a timer for 15 minutes and play Goku Black Rosé theme.",
-    "Speech-to-Text: Dictating live notes directly to active window...",
-    "System status check: CPU temperature 42°C, 60 FPS lock engaged.",
-    "Copying text from clipboard... Synchronized with Dynamic Island."
+    `"${customWakeWord}, set a timer for 15 minutes and play Goku Black Rosé theme."`,
+    `"${customWakeWord}, dictating live notes directly to my active document..."`,
+    `"${customWakeWord}, check system status and performance metrics."`,
+    `"${customWakeWord}, copy text from clipboard and sync to Dynamic Island."`
   ];
 
   const [phraseIdx, setPhraseIdx] = useState(0);
@@ -25,7 +36,7 @@ export function AiAssistantSection() {
       }, 3000);
       return () => clearTimeout(resetTimer);
     }
-  }, [charIdx, phraseIdx]);
+  }, [charIdx, phraseIdx, customWakeWord]);
 
   return (
     <section id="ai" class={styles.section}>
@@ -38,9 +49,9 @@ export function AiAssistantSection() {
           class={styles.header}
         >
           <h2>
-            Jarvis Voice AI & <span class={styles.roseGradient}>Live Speech-to-Text</span>
+            Customizable Wake Word & <span class={styles.roseGradient}>Voice AI Assistant</span>
           </h2>
-          <p>Dictate seamlessly anywhere in Windows or issue voice commands to control your desktop with zero latency.</p>
+          <p>Personalize your activation phrase directly from Settings. Say any phrase or press Ctrl + Space to trigger your desktop assistant hands-free.</p>
         </motion.div>
 
         <div class={styles.grid}>
@@ -61,10 +72,45 @@ export function AiAssistantSection() {
               <span /><span /><span /><span /><span /><span />
             </div>
 
+            {/* Interactive Wake Word Configuration Widget */}
+            <div class={styles.wakeWordConfigBox}>
+              <span class={styles.configLabel}>
+                <i class="fa-solid fa-gear" style={{ color: 'var(--rose-primary)', marginRight: 6 }} />
+                Custom Wake Word Setting
+              </span>
+              <div class={styles.inputGroup}>
+                <input
+                  type="text"
+                  value={customWakeWord}
+                  onChange={(e) => {
+                    setCustomWakeWord(e.target.value);
+                    setCharIdx(0);
+                  }}
+                  placeholder="Enter custom wake phrase..."
+                  class={styles.wakeInput}
+                />
+              </div>
+              <div class={styles.presetsRow}>
+                {presetPhrases.map((phrase) => (
+                  <button
+                    key={phrase}
+                    class={`${styles.presetChip} ${customWakeWord === phrase ? styles.presetChipActive : ''}`}
+                    onClick={() => {
+                      setCustomWakeWord(phrase);
+                      setCharIdx(0);
+                    }}
+                  >
+                    {phrase}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Live Dictation / Voice Matcher Console */}
             <div class={styles.sttConsole}>
               <div class={styles.consoleHeader}>
-                <span><i class="fa-solid fa-microphone" style={{ color: 'var(--rose-primary)' }} /> SPEECH ENGINE DICTATION</span>
-                <span style={{ color: '#4ade80' }}>ACTIVE</span>
+                <span><i class="fa-solid fa-microphone" style={{ color: 'var(--rose-primary)' }} /> WAKE WORD LISTENER</span>
+                <span style={{ color: '#4ade80' }}>DYNAMIC MATCH</span>
               </div>
               <div class={styles.typeText}>
                 {samplePhrases[phraseIdx].substring(0, charIdx)}
@@ -83,28 +129,28 @@ export function AiAssistantSection() {
           >
             <div class={styles.infoCard}>
               <h3 class={styles.cardTitle}>
-                <i class="fa-solid fa-wand-magic-sparkles" /> System-Wide Dictation
+                <i class="fa-solid fa-sliders" /> Fully Customizable Activation Phrase
               </h3>
               <p class={styles.cardDesc}>
-                Speak naturally to type into any application—Notepad, Word, Discord, or your IDE—with instant WinRT speech recognition.
+                Type any custom phrase in Settings (*Hey Jarvis*, *Hey Nova*, *Computer*, *Friday*, *Athena*). The C++ WinRT speech engine instantly updates recognition list constraints.
               </p>
             </div>
 
             <div class={styles.infoCard}>
               <h3 class={styles.cardTitle}>
-                <i class="fa-solid fa-robot" /> Voice Assistant Integration
+                <i class="fa-solid fa-keyboard" /> Push-To-Talk (Ctrl + Space)
               </h3>
               <p class={styles.cardDesc}>
-                Trigger actions hands-free. Command media playback, query system diagnostics, or search without leaving your active workflow.
+                Prefer hotkeys over voice? **Ctrl + Space** remains instantly available as a secondary push-to-talk activation shortcut anytime.
               </p>
             </div>
 
             <div class={styles.infoCard}>
               <h3 class={styles.cardTitle}>
-                <i class="fa-solid fa-shield-halved" /> 100% On-Device Privacy
+                <i class="fa-solid fa-floppy-disk" /> Persisted Configuration
               </h3>
               <p class={styles.cardDesc}>
-                All speech processing runs locally using Windows native Speech APIs. Zero cloud data leaks, zero background tracking.
+                Your custom wake phrase is saved directly to application settings and persists automatically across computer reboots.
               </p>
             </div>
           </motion.div>

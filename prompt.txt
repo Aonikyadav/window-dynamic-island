@@ -1,0 +1,95 @@
+Ran command: `.\build.bat`
+Used tool: manage_task
+Viewed skills.h:220-250
+Edited skills.h
+Ran command: `.\build.bat`
+Used tool: manage_task
+Used tool: manage_task
+Used tool: schedule
+Used tool: manage_task
+Ran command: `taskkill /F /IM DynamicIsland.exe /IM DynamicIslandDebug.exe; .\build.bat`
+Used tool: manage_task
+Used tool: manage_task
+Used tool: schedule
+Used tool: manage_task
+Ran command: `.\DynamicIsland.exe`
+
+The compiler compiled successfully, and `DynamicIsland.exe` is now running with the clean local routing configuration!
+
+Here is the breakdown of what changed, why we disabled the API request layer, and the complete reference list of trigger words and operations that work locally.
+
+---
+
+### 1. What API was it asking for? Did we use any here?
+Previously, the code had a **fallback to OpenRouter** (Cloud LLM API). If the local matching could not recognize a command (e.g. if you said something slightly different or if it misheard), it would automatically try to send the text to a cloud server to figure out the intent. 
+* This required an **OpenRouter API Key** in `settings.ini`, which you didn't set.
+* This is why it took 10+ seconds to respond and then showed an error (because there was no API key configured).
+* **We have now completely removed all cloud API fallback calls.**
+* All command recognition now happens **locally** and **instantly** (0ms delay) on your computer.
+
+---
+
+### 2. Full List of Speech Commands & How to Say Them
+To trigger a command, hold **Ctrl + Space**, speak one of the phrases below clearly, and then release both keys.
+
+#### 📂 Launching Programs
+* **Trigger words:** `open`, `launch`, `start`, `run`, `go to`, `take me to`
+* **Supported Apps:**
+  * **Browsers & Web:**
+    * `"open chrome"` or `"open google chrome"`
+    * `"open edge"` or `"open microsoft edge"`
+    * `"open firefox"`
+    * `"open youtube"` (opens YouTube in your default browser)
+    * `"open google"` (opens Google)
+    * `"open github"`
+    * `"open chatgpt"` / `"open chat gpt"`
+  * **System Tools:**
+    * `"open settings"` / `"open windows settings"`
+    * `"open task manager"`
+    * `"open calculator"`
+    * `"open notepad"` / `"open notepad plus"` (Notepad++)
+    * `"open cmd"` / `"open command prompt"`
+    * `"open powershell"` / `"open terminal"`
+    * `"open file explorer"` / `"open explorer"` / `"open files"`
+    * `"open control panel"`
+    * `"open device manager"`
+    * `"open disk management"`
+    * `"open registry editor"` / `"open regedit"`
+    * `"open camera"`
+    * `"open snipping tool"` / `"open snip"`
+    * `"open clock"` / `"open store"` / `"open mail"`
+  * **Apps:**
+    * `"open spotify"`
+    * `"open vs code"` / `"open vscode"` / `"open code"`
+    * `"open paint"`
+    * *Tip: If you speak any other app name, it will try to launch `<name>.exe` automatically.*
+
+### ❌ Closing Programs
+* **Trigger words:** `close`, `exit`, `quit`, `kill`
+* **Examples:**#
+  * `"close chrome"`
+  * `"close spotify"`
+  * `"close notepad"`
+  * `"close it"` (resolves "it" to the last app you opened via Dynamic Island)
+
+#### 🔊 Volume Controls
+* **Muting:** `"mute"`, `"unmute"`, `"silent"`
+* **Volume Up:** `"volume up"`, `"increase volume"`, `"louder"`, `"raise volume"` (increases volume by ~10%)
+* **Volume Down:** `"volume down"`, `"decrease volume"`, `"quieter"`, `"lower volume"` (decreases volume by ~10%)
+
+#### 🎵 Music & Media Controls (Works with Spotify, YouTube, VLC, etc.)
+* **Play/Resume:** `"play"`, `"resume"`
+* **Pause:** `"pause"`, `"stop music"`, `"stop song"`
+* **Next Track:** `"next"`, `"next song"`, `"next track"`, `"skip"`
+* **Previous Track:** `"previous"`, `"previous song"`, `"prev"`, `"last song"`
+
+#### 🔌 Power & System Controls
+* **Sleep Mode:** `"sleep"`, `"sleep pc"`, `"sleep computer"`
+* **Shutdown:** `"shutdown"`, `"shut down"`, `"turn off"`, `"power off"` (with a 5-second safety timer)
+* **Restart:** `"restart"`, `"reboot"` (with a 5-second safety timer)
+
+---
+
+### 3. Visual & Audio Feedback Improvements
+* When the command is not recognized, it will show **"Unknown: <what it heard>"** so you can see exactly what words your computer's microphone detected.
+* It will speak back **"I heard: <what it heard>. Try saying open, close, volume up, or mute."** to guide you dynamically.

@@ -46,7 +46,7 @@
 .aiBox {
   background: var(--bg-card);
   border: 1px solid var(--border-active);
-  padding: 2.5rem;
+  padding: 2.2rem;
   border-radius: 24px;
   backdrop-filter: blur(20px);
   box-shadow: var(--shadow-lg), var(--shadow-glow);
@@ -58,17 +58,17 @@
 
 .orbWrapper {
   position: relative;
-  width: 90px;
-  height: 90px;
-  margin-bottom: 2rem;
+  width: 80px;
+  height: 80px;
+  margin-bottom: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .orbCore {
-  width: 50px;
-  height: 50px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--rose-primary), var(--violet-primary));
   box-shadow: 0 0 25px var(--rose-primary);
@@ -92,7 +92,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  height: 40px;
+  height: 35px;
   margin-bottom: 1.5rem;
 }
 
@@ -111,6 +111,76 @@
 .voiceWave span:nth-child(4) { animation-delay: 0.5s; height: 38px; }
 .voiceWave span:nth-child(5) { animation-delay: 0.4s; height: 20px; }
 .voiceWave span:nth-child(6) { animation-delay: 0.6s; height: 28px; }
+
+/* Wake Word Settings Simulator Widget */
+.wakeWordConfigBox {
+  width: 100%;
+  background: rgba(255, 42, 133, 0.05);
+  border: 1px solid var(--border-active);
+  border-radius: 14px;
+  padding: 1.2rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.configLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+  display: block;
+}
+
+.inputGroup {
+  display: flex;
+  gap: 0.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.wakeInput {
+  flex: 1;
+  background: #050308;
+  border: 1.5px solid var(--border-active);
+  color: var(--rose-primary);
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 600;
+  outline: none;
+}
+
+.wakeInput:focus {
+  border-color: var(--rose-primary);
+  box-shadow: 0 0 12px var(--rose-glow);
+}
+
+.presetsRow {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.presetChip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  padding: 0.25rem 0.65rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.presetChip:hover,
+.presetChipActive {
+  background: var(--rose-subtle);
+  border-color: var(--rose-primary);
+  color: var(--rose-primary);
+}
 
 .sttConsole {
   width: 100%;

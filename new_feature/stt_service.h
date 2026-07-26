@@ -265,27 +265,29 @@ public:
                 } catch (...) {}
             });
 
-            // Normalize wake word
+            // Normalize custom wake word
             std::wstring w = wakeWord;
             std::transform(w.begin(), w.end(), w.begin(), ::tolower);
+            while (!w.empty() && (w.front() == L' ' || w.front() == L'\t')) w.erase(w.begin());
+            while (!w.empty() && (w.back() == L' ' || w.back() == L'\t')) w.pop_back();
+            if (w.empty()) w = L"hey jarvis";
 
-            // Add the phrase and several common accents/prefixes/variations
+            // Add the custom phrase and variations to Speech Recognition List Constraints
             std::vector<winrt::hstring> list;
             list.push_back(winrt::hstring(w));
 
-            if (w == L"hey jarvis" || w == L"jarvis") {
-                list.push_back(winrt::hstring(L"jarvis"));
-                list.push_back(winrt::hstring(L"hey jarvis"));
-                list.push_back(winrt::hstring(L"hi jarvis"));
-                list.push_back(winrt::hstring(L"hello jarvis"));
-                list.push_back(winrt::hstring(L"jarves"));
-                list.push_back(winrt::hstring(L"hey jarves"));
-                list.push_back(winrt::hstring(L"hey jarve"));
-                list.push_back(winrt::hstring(L"hi jarves"));
-            } else {
+            if (w.find(L"hey ") != 0 && w.find(L"hi ") != 0 && w.find(L"hello ") != 0) {
                 list.push_back(winrt::hstring(L"hey " + w));
                 list.push_back(winrt::hstring(L"hi " + w));
                 list.push_back(winrt::hstring(L"hello " + w));
+            } else {
+                size_t spacePos = w.find(L' ');
+                if (spacePos != std::wstring::npos) {
+                    std::wstring coreName = w.substr(spacePos + 1);
+                    list.push_back(winrt::hstring(coreName));
+                    list.push_back(winrt::hstring(L"hi " + coreName));
+                    list.push_back(winrt::hstring(L"hello " + coreName));
+                }
             }
 
             WinSpeech::SpeechRecognitionListConstraint listConstraint(list);
@@ -300,7 +302,7 @@ public:
                 return false;
             }
 
-            // Register result handler
+            // Register result handler with dynamic phrase matching
             resultToken_ = recognizer_.ContinuousRecognitionSession().ResultGenerated(
                 [this](WinSpeech::SpeechContinuousRecognitionSession const&,
                        WinSpeech::SpeechContinuousRecognitionResultGeneratedEventArgs const& args) {
@@ -312,7 +314,18 @@ public:
                             std::wstring lower = text;
                             std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
 
-                            if (!lower.empty() && (lower.find(L"jarvis") != std::wstring::npos || lower.find(L"hey") != std::wstring::npos)) {
+                            std::wstring target = wakeWord_;
+                            std::transform(target.begin(), target.end(), target.begin(), ::tolower);
+                            while (!target.empty() && (target.front() == L' ' || target.front() == L'\t')) target.erase(target.begin());
+                            while (!target.empty() && (target.back() == L' ' || target.back() == L'\t')) target.pop_back();
+                            if (target.empty()) target = L"hey jarvis";
+
+                            size_t spacePos = target.find(L' ');
+                            std::wstring coreName = (spacePos != std::wstring::npos) ? target.substr(spacePos + 1) : target;
+
+                            bool isMatch = (!lower.empty() && (lower.find(target) != std::wstring::npos || (!coreName.empty() && lower.find(coreName) != std::wstring::npos)));
+
+                            if (isMatch) {
                                 std::function<void()> cb;
                                 {
                                     std::lock_guard<std::mutex> lock(mtx_);

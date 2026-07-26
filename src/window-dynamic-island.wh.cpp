@@ -6986,6 +6986,7 @@ HWND g_hwndSttLive = nullptr;
 HWND g_hwndEnableMiniPillNav = nullptr;
 HWND g_hwndEnableAssistant = nullptr;
 HWND g_hwndEnableWakeWord = nullptr;
+HWND g_hwndVoiceWakeWord = nullptr;
 HWND g_hwndTransparency = nullptr;
 
 LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -7168,7 +7169,12 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
             gy2 += gRowH;
             g_hwndEnableAssistant = AddCheckbox(L"Enable Voice Assistant Mode", assistant != 0, gx2, gy2, gCol2W);
             gy2 += gRowH;
-            g_hwndEnableWakeWord = AddCheckbox(L"Enable Wake Word (\"Hey Jarvis\")", wakeWord != 0, gx2, gy2, gCol2W);
+            g_hwndEnableWakeWord = AddCheckbox(L"Enable Voice Wake Word", wakeWord != 0, gx2, gy2, gCol2W);
+            gy2 += gRowH;
+            AddLabel(L"Wake Word Phrase:", gx2, gy2, 110);
+            std::wstring curWakeWord = GetStringSettingCopy(L"VoiceAssistant.WakeWord");
+            if (curWakeWord.empty()) curWakeWord = L"Hey Jarvis";
+            g_hwndVoiceWakeWord = AddEditBox(gx2 + 110, gy2, 175, 22, curWakeWord.c_str());
             gy2 += gRowH;
             AddLabel(L"Accent Brightness:", gx2, gy2, 110);
             g_hwndAccentBrightness = AddComboBox(gx2 + 110, gy2, 175, 200);
@@ -7364,6 +7370,11 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
                 WriteCheck(g_hwndEnableMiniPillNav, L"Modules.EnableMiniPillNav");
                 WriteCheck(g_hwndEnableAssistant, L"Assistant.EnableAssistant");
                 WriteCheck(g_hwndEnableWakeWord, L"VoiceAssistant.EnableWakeWord");
+                if (g_hwndVoiceWakeWord) {
+                    wchar_t wwBuf[128] = { 0 };
+                    GetWindowTextW(g_hwndVoiceWakeWord, wwBuf, 128);
+                    WritePrivateProfileStringW(L"Settings", L"VoiceAssistant.WakeWord", wwBuf, GetIniPath().c_str());
+                }
 
                 bool startupChecked = (SendMessage(g_hwndStartup, BM_GETCHECK, 0, 0) == BST_CHECKED);
                 SetStartupRegistry(startupChecked);
