@@ -10,8 +10,9 @@ export function Header() {
           <span>Dynamic<span class={styles.roseText}>Island</span></span>
         </a>
         <nav class={styles.nav}>
+          <a href="#showcase" class={styles.navLink}>Showcase</a>
           <a href="#features" class={styles.navLink}>Features</a>
-          <a href="#simulator" class={styles.navLink}>Live Simulator</a>
+          <a href="#gallery" class={styles.navLink}>Gallery</a>
           <a href="#setup" class={styles.navLink}>Setup Guide</a>
           <a
             href="https://github.com/Aonikyadav/window-dynamic-island"

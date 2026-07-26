@@ -1,0 +1,82 @@
+.section {
+  padding: 6rem 2rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.header {
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto 4rem;
+}
+
+.header h2 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 0.8rem;
+}
+
+.roseGradient {
+  background: linear-gradient(135deg, var(--rose-primary), var(--violet-primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header p {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}
+
+.grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  padding: 2.2rem 1.8rem;
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card:hover {
+  border-color: var(--border-active);
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(255, 42, 133, 0.08);
+}
+
+.icon {
+  font-size: 1.8rem;
+  color: var(--rose-primary);
+  margin-bottom: 1.2rem;
+  filter: drop-shadow(0 0 10px var(--rose-glow));
+}
+
+.cardTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+}
+
+.cardDesc {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 968px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

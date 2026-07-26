@@ -9,39 +9,26 @@ export function Footer() {
           <div class={styles.logo}>
             <span>🏝️ Dynamic<span class={styles.roseText}>Island</span></span>
           </div>
-          <p class={styles.brandDesc}>
-            A divine, hardware-accelerated desktop overlay for Windows inspired by Super Saiyan Rosé aesthetics.
+          <p class={styles.desc}>
+            A hardware-accelerated, 60 FPS Dynamic Island overlay for Windows desktops built with Win32, Direct2D, and WinRT APIs.
           </p>
         </div>
+
         <div class={styles.links}>
-          <h4 class={styles.linksTitle}>Project Links</h4>
-          <a
-            href="https://github.com/Aonikyadav/window-dynamic-island"
-            target="_blank"
-            rel="noopener noreferrer"
-            class={styles.link}
-          >
+          <h4 class={styles.linksTitle}>Navigation</h4>
+          <a href="https://github.com/Aonikyadav/window-dynamic-island" target="_blank" rel="noreferrer" class={styles.link}>
             GitHub Repository
           </a>
-          <a
-            href="https://github.com/Aonikyadav/window-dynamic-island/releases"
-            target="_blank"
-            rel="noopener noreferrer"
-            class={styles.link}
-          >
-            Latest Releases
+          <a href="https://github.com/Aonikyadav/window-dynamic-island/releases" target="_blank" rel="noreferrer" class={styles.link}>
+            Latest Releases (EXE)
           </a>
-          <a
-            href="https://github.com/Aonikyadav/window-dynamic-island/issues"
-            target="_blank"
-            rel="noopener noreferrer"
-            class={styles.link}
-          >
-            Report Issues
+          <a href="https://github.com/Aonikyadav/window-dynamic-island/issues" target="_blank" rel="noreferrer" class={styles.link}>
+            Report an Issue
           </a>
         </div>
+
         <div class={styles.credits}>
-          <p>© {new Date().getFullYear()} Aonik Yadav. Maintained with divine power. MIT License.</p>
+          <p>© {new Date().getFullYear()} Aonik Yadav. Distributed under the MIT License.</p>
         </div>
       </div>
     </footer>
