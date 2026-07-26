@@ -1,33 +1,91 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import styles from './HeroSection.module.css';
 import { RadarScanner } from '../effects/RadarScanner';
 
 export function HeroSection() {
+  const [activePillIndex, setActivePillIndex] = useState(0);
+
+  const pillModes = [
+    {
+      id: 'media',
+      content: (
+        <>
+          <div class={styles.spinnerArt} />
+          <span>Super Saiyan Rosé — Theme</span>
+          <div class={styles.waveform}>
+            <span /><span /><span />
+          </div>
+        </>
+      )
+    },
+    {
+      id: 'stt',
+      content: (
+        <>
+          <i class="fa-solid fa-microphone" style={{ color: 'var(--rose-primary)' }} />
+          <span>Listening Dictation...</span>
+          <span style={{ color: 'var(--rose-primary)', fontWeight: 800 }}>LIVE</span>
+        </>
+      )
+    },
+    {
+      id: 'system',
+      content: (
+        <>
+          <span>⚙️ Direct2D Engine</span>
+          <span style={{ opacity: 0.4 }}>|</span>
+          <span style={{ color: '#4ade80', fontWeight: 800 }}>60 FPS Lock</span>
+        </>
+      )
+    }
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActivePillIndex((prev) => (prev + 1) % pillModes.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [pillModes.length]);
+
   return (
     <section class={styles.hero}>
-      {/* Giant Distressed Background Title (METAVERSE Style) */}
+      {/* High-Contrast Backdrop Title */}
       <div class={styles.giantBgTitle}>
         DYNAMIC ISLAND
       </div>
 
-      {/* Centerpiece Visual Mockup (home.png) */}
+      {/* Centerpiece Visual Simulator Frame */}
       <div class={styles.heroVisualCenter}>
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
+          initial={{ opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8 }}
-          class={styles.heroImageContainer}
+          class={styles.heroFrameContainer}
         >
-          <img
-            src="/assets/home.png"
-            alt="Dynamic Island for Windows Home Preview"
-            class={styles.heroImage}
-          />
+          {/* Animated Morphing Pill Over Desktop */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pillModes[activePillIndex].id}
+              initial={{ opacity: 0, scale: 0.85, y: -5 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.85, y: 5 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+              class={styles.heroIslandPill}
+            >
+              {pillModes[activePillIndex].content}
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Desktop Wallpaper Mockup */}
+          <div style={{ position: 'absolute', bottom: 15, left: '50%', transform: 'translateX(-50%)', fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.7)', padding: '0.3rem 0.8rem', borderRadius: 99, border: '1px solid var(--border-subtle)' }}>
+            <i class="fa-solid fa-desktop" style={{ color: 'var(--rose-primary)', marginRight: 6 }} />
+            Windows 11 Native Top Overlay
+          </div>
         </motion.div>
       </div>
 
-      {/* Dual Column Text & CTA Content */}
+      {/* Dual Column High-Contrast Content */}
       <div class={styles.dualColumns}>
         {/* Left Column */}
         <motion.div
@@ -37,15 +95,14 @@ export function HeroSection() {
           class={styles.leftCol}
         >
           <span class={styles.eyebrow}>ENTER THE NEXT DIMENSION</span>
-          <h2 class={styles.colTitle}>DYNAMIC OVERLAY</h2>
+          <h1 class={styles.colTitle}>
+            DYNAMIC <span class={styles.roseText}>OVERLAY</span>
+          </h1>
           <p class={styles.colDesc}>
-            A fluid, hardware-accelerated top display island bringing notifications, media playback, speech dictation, weather forecasts, and system metrics directly to your Windows desktop.
+            A fluid, hardware-accelerated top display island bringing notifications, media waveforms, speech dictation, weather forecasts, and system metrics directly to your Windows desktop.
           </p>
-          <a
-            href="#showcase"
-            class={styles.btnSlanted}
-          >
-            <span>EXPLORE NOW</span>
+          <a href="#simulator" class={styles.btnSlanted}>
+            <span>EXPLORE LIVE SIMULATOR</span>
             <i class="fa-solid fa-angles-right" />
           </a>
         </motion.div>
@@ -61,9 +118,11 @@ export function HeroSection() {
             <span>WHERE IMAGINATION MEETS REALITY</span>
             <span class={styles.tagNum}>01 / 05</span>
           </div>
-          <h2 class={styles.colTitle}>THE FUTURE</h2>
+          <h2 class={styles.colTitle}>
+            THE <span class={styles.roseText}>FUTURE</span>
+          </h2>
           <p class={styles.colDesc}>
-            Engineered natively with Win32, Direct2D, and WinRT APIs for 60 FPS smoothness, dual-spring physics transitions, and near-zero background CPU impact.
+            Engineered natively with Win32, Direct2D, and WinRT APIs for 60 FPS liquid physics, dual-spring velocity interpolation, and near-zero background CPU impact.
           </p>
           <a
             href="https://github.com/Aonikyadav/window-dynamic-island/releases/latest"
@@ -109,7 +168,7 @@ export function HeroSection() {
           </div>
         </div>
 
-        <a href="#showcase" class={styles.hudActionBtn} title="Explore Showcase">
+        <a href="#simulator" class={styles.hudActionBtn} title="Try Live Simulator">
           <i class="fa-solid fa-arrow-right" />
         </a>
       </motion.div>

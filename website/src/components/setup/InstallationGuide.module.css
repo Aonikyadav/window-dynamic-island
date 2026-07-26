@@ -1,6 +1,9 @@
 .section {
   padding: 6rem 2rem;
   border-top: 1px solid var(--border-subtle);
+  background: var(--bg-void);
+  position: relative;
+  z-index: 5;
 }
 
 .header {
@@ -10,10 +13,11 @@
 }
 
 .header h2 {
-  font-size: 2.5rem;
+  font-size: 2.8rem;
   font-weight: 800;
   letter-spacing: -1px;
   margin-bottom: 0.8rem;
+  color: var(--text-bright);
 }
 
 .roseGradient {
@@ -24,11 +28,11 @@
 
 .header p {
   color: var(--text-muted);
-  font-size: 1.05rem;
+  font-size: 1.1rem;
 }
 
 .wrapper {
-  max-width: 800px;
+  max-width: 850px;
   margin: 0 auto;
 }
 
@@ -40,12 +44,12 @@
 }
 
 .tabBtn {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-subtle);
   color: var(--text-bright);
   padding: 0.8rem 2rem;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -54,51 +58,55 @@
 .tabBtnActive {
   background: var(--rose-primary);
   border-color: var(--rose-primary);
-  box-shadow: 0 0 15px var(--rose-glow);
+  box-shadow: 0 0 20px var(--rose-glow);
 }
 
 .content {
   background: var(--bg-card);
   border: 1px solid var(--border-active);
   padding: 3rem;
-  border-radius: 16px;
+  border-radius: 20px;
   box-shadow: var(--shadow-lg);
 }
 
 .content h3 {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   font-weight: 800;
   margin-bottom: 0.6rem;
+  color: var(--text-bright);
 }
 
 .content p {
-  color: var(--text-muted);
+  color: var(--text-main); /* High contrast! */
   margin-bottom: 2rem;
+  font-size: 1rem;
 }
 
 .stepList {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.8rem;
 }
 
 .step {
   display: flex;
   align-items: center;
-  gap: 1.2rem;
+  gap: 1.4rem;
   font-size: 1.05rem;
+  color: var(--text-main);
 }
 
 .stepNum {
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: var(--rose-subtle);
-  border: 1.5px solid var(--rose-primary);
+  border: 2px solid var(--rose-primary);
   color: var(--rose-primary);
   font-weight: 800;
-  font-size: 0.9rem;
+  font-size: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }

@@ -1,37 +1,39 @@
 /* ==========================================================================
-   DYNAMICLAKE-INSPIRED DESIGN SYSTEM TOKENS
+   HIGH-CONTRAST CYBERPUNK DESIGN SYSTEM TOKENS
    ========================================================================== */
 
 :root {
-  /* Dark Void Surface Palette */
+  /* Dark Surface Palette */
   --bg-void: #07070a;
-  --bg-surface: #0e0e14;
-  --bg-surface-hover: #15151f;
-  --bg-card: rgba(16, 16, 24, 0.75);
-  --bg-glass: rgba(14, 14, 20, 0.8);
+  --bg-surface: #0f0e17;
+  --bg-surface-hover: #171624;
+  --bg-card: rgba(18, 16, 28, 0.85);
+  --bg-glass: rgba(14, 12, 22, 0.85);
   
   /* Brand Accents */
   --rose-primary: #ff2a85;
-  --rose-glow: rgba(255, 42, 133, 0.4);
-  --rose-subtle: rgba(255, 42, 133, 0.12);
+  --rose-light: #ff66aa;
+  --rose-glow: rgba(255, 42, 133, 0.5);
+  --rose-subtle: rgba(255, 42, 133, 0.18);
   
   --violet-primary: #8c1aff;
-  --violet-glow: rgba(140, 26, 255, 0.35);
+  --violet-light: #b366ff;
+  --violet-glow: rgba(140, 26, 255, 0.45);
   
   --accent: var(--rose-primary);
   --accent-glow: var(--rose-glow);
 
-  /* Typography Colors */
+  /* High-Contrast Typography Colors (No Dim Text!) */
   --text-bright: #ffffff;
-  --text-main: #ededf0;
-  --text-muted: #a1a1aa;
-  --text-dim: #71717a;
+  --text-main: #f4f4f5;
+  --text-muted: #d4d4d8;
+  --text-dim: #a1a1aa;
   
   /* Borders & Shadows */
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-active: rgba(255, 42, 133, 0.35);
-  --shadow-lg: 0 25px 60px rgba(0, 0, 0, 0.7);
-  --shadow-glow: 0 0 35px rgba(255, 42, 133, 0.15);
+  --border-subtle: rgba(255, 255, 255, 0.14);
+  --border-active: rgba(255, 42, 133, 0.45);
+  --shadow-lg: 0 25px 60px rgba(0, 0, 0, 0.85);
+  --shadow-glow: 0 0 35px rgba(255, 42, 133, 0.25);
 
   /* Typography */
   --font-sans: 'Outfit', 'Inter Tight', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;

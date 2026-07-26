@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import styles from './InstallationGuide.module.css';
 
 export function InstallationGuide() {
@@ -6,14 +7,20 @@ export function InstallationGuide() {
 
   return (
     <section id="setup" class={styles.section}>
-      <div class={styles.header}>
-        <h2>
-          Simple & Instant <span class={styles.roseGradient}>Setup</span>
-        </h2>
-        <p>Choose your preferred installation method to get started.</p>
-      </div>
-
       <div class={styles.wrapper}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          class={styles.header}
+        >
+          <h2>
+            Simple & Instant <span class={styles.roseGradient}>Setup</span>
+          </h2>
+          <p>Choose your preferred installation method to get started.</p>
+        </motion.div>
+
         <div class={styles.tabs}>
           <button
             class={`${styles.tabBtn} ${activeTab === 'exe' ? styles.tabBtnActive : ''}`}
@@ -30,7 +37,13 @@ export function InstallationGuide() {
         </div>
 
         {activeTab === 'exe' ? (
-          <div class={styles.content}>
+          <motion.div
+            key="exe"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            class={styles.content}
+          >
             <h3>Method 1: Direct Executable</h3>
             <p>Download the pre-compiled standalone release. Zero installation or registry changes needed.</p>
 
@@ -38,30 +51,36 @@ export function InstallationGuide() {
               <div class={styles.step}>
                 <div class={styles.stepNum}>1</div>
                 <div>
-                  <strong>Download: </strong>
-                  <a href="https://github.com/Aonikyadav/window-dynamic-island/releases/latest" target="_blank" rel="noreferrer" style={{ color: 'var(--rose-primary)', fontWeight: 600 }}>
-                    DynamicIsland.exe
+                  <strong style={{ color: 'var(--text-bright)' }}>Download: </strong>
+                  <a href="https://github.com/Aonikyadav/window-dynamic-island/releases/latest" target="_blank" rel="noreferrer" style={{ color: 'var(--rose-primary)', fontWeight: 700 }}>
+                    DynamicIsland.exe (v1.6.1)
                   </a>
                 </div>
               </div>
               <div class={styles.step}>
                 <div class={styles.stepNum}>2</div>
                 <div>
-                  <strong>Launch: </strong>
-                  <span style={{ color: 'var(--text-muted)' }}>Double-click to start. The island automatically appears at top-center display.</span>
+                  <strong style={{ color: 'var(--text-bright)' }}>Launch: </strong>
+                  <span>Double-click to run. The island automatically mounts to top-center of your display.</span>
                 </div>
               </div>
               <div class={styles.step}>
                 <div class={styles.stepNum}>3</div>
                 <div>
-                  <strong>Configure: </strong>
-                  <span style={{ color: 'var(--text-muted)' }}>Right-click the island to launch native settings and set auto-start.</span>
+                  <strong style={{ color: 'var(--text-bright)' }}>Configure: </strong>
+                  <span>Right-click the island to launch native settings, toggle auto-start, and set opacity.</span>
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         ) : (
-          <div class={styles.content}>
+          <motion.div
+            key="windhawk"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            class={styles.content}
+          >
             <h3>Method 2: Install via Windhawk</h3>
             <p>Inject Dynamic Island directly into Windows Explorer using the Windhawk Mod Manager.</p>
 
@@ -69,26 +88,26 @@ export function InstallationGuide() {
               <div class={styles.step}>
                 <div class={styles.stepNum}>1</div>
                 <div>
-                  <strong>Open Windhawk: </strong>
-                  <span style={{ color: 'var(--text-muted)' }}>Launch Windhawk and click "Developer Writing Mod".</span>
+                  <strong style={{ color: 'var(--text-bright)' }}>Open Windhawk: </strong>
+                  <span>Launch Windhawk and click "Developer Writing Mod".</span>
                 </div>
               </div>
               <div class={styles.step}>
                 <div class={styles.stepNum}>2</div>
                 <div>
-                  <strong>Paste Source: </strong>
-                  <span style={{ color: 'var(--text-muted)' }}>Copy source code from <code>window-dynamic-island.wh.cpp</code>.</span>
+                  <strong style={{ color: 'var(--text-bright)' }}>Paste Source: </strong>
+                  <span>Copy C++ source code from <code>window-dynamic-island.wh.cpp</code>.</span>
                 </div>
               </div>
               <div class={styles.step}>
                 <div class={styles.stepNum}>3</div>
                 <div>
-                  <strong>Compile & Inject: </strong>
-                  <span style={{ color: 'var(--text-muted)' }}>Click "Compile and Inject" to run natively.</span>
+                  <strong style={{ color: 'var(--text-bright)' }}>Compile & Inject: </strong>
+                  <span>Click "Compile and Inject" to run natively inside Explorer.</span>
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
     </section>

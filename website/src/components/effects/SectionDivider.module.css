@@ -1,0 +1,27 @@
+.dividerContainer {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.line {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 42, 133, 0.4) 50%, transparent 100%);
+  box-shadow: 0 0 10px rgba(255, 42, 133, 0.3);
+}
+
+.centerDiamond {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--rose-primary);
+  transform: rotate(45deg);
+  box-shadow: 0 0 12px var(--rose-primary);
+}

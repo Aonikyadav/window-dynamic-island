@@ -16,14 +16,14 @@ export function FeatureGrid() {
         <h2>
           Forged in <span class={styles.roseGradient}>Performance & Precision</span>
         </h2>
-        <p>Built natively for Windows with zero lag, low resource usage, and smooth animations.</p>
+        <p>Engineered natively for Windows 10/11 with zero input lag, low background CPU footprint, and organic spring physics.</p>
       </motion.div>
 
       <div class={styles.grid}>
         {featuresList.map((f, idx) => (
           <motion.div
             key={f.id}
-            initial={{ opacity: 0, y: 25 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: idx * 0.1 }}
