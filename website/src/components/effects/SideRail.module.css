@@ -1,0 +1,87 @@
+.rail {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 60px;
+  height: 100vh;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 0;
+  border-right: 1px solid var(--border-subtle);
+  background: rgba(6, 3, 10, 0.4);
+  backdrop-filter: blur(10px);
+}
+
+.topGridIcon {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.topGridIcon:hover {
+  color: var(--rose-primary);
+}
+
+.centerSocials {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.8rem;
+}
+
+.followText {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.socialIcon {
+  font-size: 1rem;
+  color: var(--text-muted);
+  transition: all 0.3s ease;
+}
+
+.socialIcon:hover {
+  color: var(--rose-primary);
+  transform: scale(1.2);
+  filter: drop-shadow(0 0 8px var(--rose-glow));
+}
+
+.scrollDown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.scrollText {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.scrollLine {
+  width: 2px;
+  height: 35px;
+  background: linear-gradient(to bottom, var(--rose-primary), transparent);
+  border-radius: 99px;
+  animation: live-flash 1.5s infinite ease-in-out;
+}
+
+@media (max-width: 1024px) {
+  .rail {
+    display: none;
+  }
+}
