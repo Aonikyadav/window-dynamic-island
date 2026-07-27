@@ -20,11 +20,11 @@ export function Header({ onOpenDownload }) {
 
         <div class={styles.rightGroup}>
           <a
-            href="https://github.com/Aonikyadav/window-dynamic-island"
+            href="https://github.com/Aonikyadav"
             target="_blank"
             rel="noreferrer"
             class={styles.searchIcon}
-            title="GitHub Repository"
+            title="GitHub Profile"
           >
             <i class="fa-brands fa-github" style={{ fontSize: '1.2rem' }} />
           </a>

@@ -14,18 +14,20 @@ export function DownloadModal({ isOpen, onClose }) {
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Reset form and submission status whenever modal is opened
   useEffect(() => {
-    // Check if user has already filled out details previously
-    const savedUser = localStorage.getItem('dynamic_island_user');
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        if (parsed.fullName && parsed.email) {
-          setFormData(parsed);
-        }
-      } catch (e) {}
+    if (isOpen) {
+      setSubmitted(false);
+      setErrorMsg('');
+      setFormData({
+        fullName: '',
+        email: '',
+        profession: '',
+        collegeName: '',
+        yearOfStudy: '',
+      });
     }
-  }, []);
+  }, [isOpen]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -34,7 +36,7 @@ export function DownloadModal({ isOpen, onClose }) {
   };
 
   const triggerDirectDownload = () => {
-    // Trigger download of DynamicIsland.exe from main branch
+    // Trigger direct download of DynamicIsland.exe from main branch
     const downloadUrl = 'https://raw.githubusercontent.com/Aonikyadav/window-dynamic-island/main/DynamicIsland.exe';
     const link = document.createElement('a');
     link.href = downloadUrl;
@@ -71,11 +73,11 @@ export function DownloadModal({ isOpen, onClose }) {
       }
     }
 
-    // Save user details to localStorage
+    // Save registration details to localStorage
     localStorage.setItem('dynamic_island_user', JSON.stringify(formData));
     setSubmitted(true);
 
-    // Trigger auto download
+    // Trigger immediate automatic download
     triggerDirectDownload();
   };
 
@@ -104,7 +106,7 @@ export function DownloadModal({ isOpen, onClose }) {
                   <i class="fa-solid fa-download" />
                 </div>
                 <h3>Get <span class={styles.roseText}>Dynamic Island</span></h3>
-                <p>Please complete your quick registration to start downloading <strong>DynamicIsland.exe</strong> (v1.0.0 for Windows 10/11).</p>
+                <p>Please fill out your details to start downloading <strong>DynamicIsland.exe</strong> (v1.0.0 for Windows 10/11).</p>
               </div>
 
               {errorMsg && (
@@ -229,12 +231,12 @@ export function DownloadModal({ isOpen, onClose }) {
                   <i class="fa-solid fa-download" /> Click here if download didn't start
                 </button>
                 <a
-                  href="https://github.com/Aonikyadav/window-dynamic-island"
+                  href="https://github.com/Aonikyadav"
                   target="_blank"
                   rel="noreferrer"
                   class={styles.githubBtn}
                 >
-                  <i class="fa-brands fa-github" /> View on GitHub
+                  <i class="fa-brands fa-github" /> View GitHub Profile
                 </a>
               </div>
             </div>

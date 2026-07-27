@@ -16,14 +16,14 @@ export function Footer({ onOpenDownload }) {
 
         <div class={styles.links}>
           <h4 class={styles.linksTitle}>Quick Links</h4>
-          <a href="https://github.com/Aonikyadav/window-dynamic-island" target="_blank" rel="noreferrer" class={styles.link}>
-            <i class="fa-brands fa-github" /> Official GitHub Repository
+          <a href="https://github.com/Aonikyadav" target="_blank" rel="noreferrer" class={styles.link}>
+            <i class="fa-brands fa-github" /> GitHub Profile (@Aonikyadav)
           </a>
           <button onClick={onOpenDownload} class={styles.link} style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer' }}>
             <i class="fa-solid fa-download" /> Download Standalone (EXE)
           </button>
-          <a href="https://github.com/Aonikyadav/window-dynamic-island/issues" target="_blank" rel="noreferrer" class={styles.link}>
-            <i class="fa-solid fa-bug" /> Report an Issue / Request Feature
+          <a href="https://github.com/Aonikyadav" target="_blank" rel="noreferrer" class={styles.link}>
+            <i class="fa-solid fa-code-fork" /> GitHub Repositories
           </a>
         </div>
 

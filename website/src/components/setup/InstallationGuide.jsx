@@ -107,7 +107,7 @@ export function InstallationGuide({ onOpenDownload }) {
                 <div class={styles.stepNum}>2</div>
                 <div>
                   <strong style={{ color: 'var(--text-bright)' }}>Paste Source: </strong>
-                  <span>Copy C++ source code from <a href="https://github.com/Aonikyadav/window-dynamic-island/blob/main/src/window-dynamic-island.wh.cpp" target="_blank" rel="noreferrer" style={{ color: 'var(--rose-primary)' }}><code>window-dynamic-island.wh.cpp</code></a>.</span>
+                  <span>Copy C++ source code from <a href="https://github.com/Aonikyadav" target="_blank" rel="noreferrer" style={{ color: 'var(--rose-primary)' }}><code>@Aonikyadav GitHub Profile</code></a>.</span>
                 </div>
               </div>
               <div class={styles.step}>
