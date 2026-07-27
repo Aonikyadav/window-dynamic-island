@@ -5509,8 +5509,8 @@ DWORD WINAPI RenderThreadProc(void*) {
             prevPinned = pinned;
         }
 
-        // Animated activities that require continuous rendering
-        if (primary.kind == IslandKind::Media || primary.kind == IslandKind::BatteryLow ||
+        // Animated activities that require continuous rendering (60 FPS smooth lock)
+        if (snapshot.media.playing || primary.kind == IslandKind::Media || primary.kind == IslandKind::BatteryLow ||
             primary.kind == IslandKind::Clipboard || primary.kind == IslandKind::Notification ||
             primary.kind == IslandKind::Timer || primary.kind == IslandKind::VoiceAssistant) {
             needsRender = true;

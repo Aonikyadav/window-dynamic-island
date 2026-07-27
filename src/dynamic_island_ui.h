@@ -2494,26 +2494,6 @@ class Renderer {
         // Use a step size of 4 samples (approx 40ms) so bars aren't identical
         const size_t step = 4;
 
-        // Create linear gradient brush for the premium vertical gradient effect
-        ComPtr<ID2D1LinearGradientBrush> gradBrush;
-        ComPtr<ID2D1GradientStopCollection> stops;
-        D2D1_GRADIENT_STOP stopData[2] = {};
-        stopData[0].position = 0.0f;
-        stopData[0].color = lerpedAccent_;
-        stopData[1].position = 1.0f;
-        stopData[1].color = lerpedAccent_;
-        // Bottom is faded slightly for depth (Liquid Glass look)
-        stopData[1].color.a = 0.35f;
-
-        target_->CreateGradientStopCollection(stopData, 2, &stops);
-        if (stops) {
-            target_->CreateLinearGradientBrush(
-                D2D1::LinearGradientBrushProperties(
-                    D2D1::Point2F((rect.left + rect.right) * 0.5f, rect.top),
-                    D2D1::Point2F((rect.left + rect.right) * 0.5f, rect.bottom)),
-                stops.Get(), &gradBrush);
-        }
-
         for (size_t i = 0; i < count; ++i) {
             const size_t offset = (count - i) * step;
             const size_t source = (state.waveformWrite + state.waveform.size() - offset) %
@@ -2523,15 +2503,9 @@ class Renderer {
             const float x = rect.left + i * (barWidth + gap);
             D2D1_RECT_F bar = D2D1::RectF(x, centerY - h * 0.5f, x + barWidth, centerY + h * 0.5f);
             
-            if (gradBrush) {
-                gradBrush->SetOpacity(0.45f + 0.5f * amp);
-                target_->FillRoundedRectangle(D2D1::RoundedRect(bar, barWidth * 0.5f, barWidth * 0.5f),
-                                             gradBrush.Get());
-            } else {
-                accentBrush_->SetOpacity(0.45f + 0.5f * amp);
-                target_->FillRoundedRectangle(D2D1::RoundedRect(bar, barWidth * 0.5f, barWidth * 0.5f),
-                                             accentBrush_.Get());
-            }
+            accentBrush_->SetOpacity(0.45f + 0.55f * amp);
+            target_->FillRoundedRectangle(D2D1::RoundedRect(bar, barWidth * 0.5f, barWidth * 0.5f),
+                                         accentBrush_.Get());
         }
         accentBrush_->SetOpacity(1.0f);
     }
