@@ -22,15 +22,22 @@ app.use(express.json());
 // Serve built static frontend files from 'dist' directory
 app.use(express.static(path.join(__dirname, 'dist')));
 
-let dbClient = null;
+let mongoCollection = null;
 
-async function getCollection() {
-  if (!dbClient) {
-    dbClient = new MongoClient(MONGODB_URI);
-    await dbClient.connect();
-    console.log('Connected successfully to Cluster0 -> dynamic_island -> di_users');
+// Connect to MongoDB immediately on startup
+async function initDatabase() {
+  try {
+    const client = new MongoClient(MONGODB_URI);
+    await client.connect();
+    mongoCollection = client.db(DB_NAME).collection(COLLECTION_NAME);
+    console.log('\n==================================================');
+    console.log('✅ EVENTRA MONGODB CLUSTER CONNECTED SUCCESSFULLY!');
+    console.log(`📊 Database: ${DB_NAME}`);
+    console.log(`📁 Collection: ${COLLECTION_NAME}`);
+    console.log('==================================================\n');
+  } catch (error) {
+    console.error('\n❌ MONGODB CONNECTION ERROR:', error.message);
   }
-  return dbClient.db(DB_NAME).collection(COLLECTION_NAME);
 }
 
 // POST /api/register - Save user details into "di_users" collection under "dynamic_island" database
@@ -46,7 +53,9 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ success: false, message: 'College name and year of study are required for students.' });
     }
 
-    const collection = await getCollection();
+    if (!mongoCollection) {
+      await initDatabase();
+    }
 
     const userDoc = {
       fullName: fullName.trim(),
@@ -59,8 +68,8 @@ app.post('/api/register', async (req, res) => {
       createdAt: new Date(),
     };
 
-    const result = await collection.insertOne(userDoc);
-    console.log(`Saved new user to "di_users" collection in database "dynamic_island". ID: ${result.insertedId}`);
+    const result = await mongoCollection.insertOne(userDoc);
+    console.log(`[MongoDB] Recorded new user: ${fullName} (${email}) -> ID: ${result.insertedId}`);
 
     return res.status(200).json({
       success: true,
@@ -74,14 +83,18 @@ app.post('/api/register', async (req, res) => {
 });
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', company: 'Eventra (CampuTix)', database: 'dynamic_island', collection: 'di_users' });
+  res.json({ status: 'OK', company: 'Eventra (CampuTix)', database: DB_NAME, collection: COLLECTION_NAME, connected: !!mongoCollection });
 });
 
-// SPA Wildcard Route: Serve index.html for all non-API paths
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+// SPA Fallback Middleware: Serve index.html for all non-API paths
+app.use((req, res, next) => {
+  if (req.method === 'GET' && !req.path.startsWith('/api')) {
+    return res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  }
+  next();
 });
 
-app.listen(PORT, () => {
-  console.log(`Eventra Dynamic Island Server & API running on http://localhost:${PORT}`);
+app.listen(PORT, async () => {
+  console.log(`Eventra Dynamic Island Server running on http://localhost:${PORT}`);
+  await initDatabase();
 });
