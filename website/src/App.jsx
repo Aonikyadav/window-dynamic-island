@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { SideRail } from './components/effects/SideRail';
@@ -13,8 +13,19 @@ import { InteractiveSimulator } from './components/simulator/InteractiveSimulato
 import { AiAssistantSection } from './components/ai/AiAssistantSection';
 import { FeatureGrid } from './components/features/FeatureGrid';
 import { InstallationGuide } from './components/setup/InstallationGuide';
+import { DownloadModal } from './components/download/DownloadModal';
 
 export function App() {
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
+
+  const handleOpenDownload = () => {
+    setIsDownloadOpen(true);
+  };
+
+  const handleCloseDownload = () => {
+    setIsDownloadOpen(false);
+  };
+
   return (
     <div style={{ position: 'relative', overflowX: 'hidden' }}>
       {/* Background Atmosphere & Ambient Lighting */}
@@ -23,26 +34,29 @@ export function App() {
       <MouseGlow />
       <SideRail />
 
-      <Header />
+      <Header onOpenDownload={handleOpenDownload} />
       
       <main style={{ position: 'relative' }}>
         <NeonGrid />
-        <HeroSection />
+        <HeroSection onOpenDownload={handleOpenDownload} />
 
         <SectionDivider />
-        <InteractiveSimulator />
+        <InteractiveSimulator onOpenDownload={handleOpenDownload} />
 
         <SectionDivider />
-        <AiAssistantSection />
+        <AiAssistantSection onOpenDownload={handleOpenDownload} />
 
         <SectionDivider />
-        <FeatureGrid />
+        <FeatureGrid onOpenDownload={handleOpenDownload} />
 
         <SectionDivider />
-        <InstallationGuide />
+        <InstallationGuide onOpenDownload={handleOpenDownload} />
       </main>
 
-      <Footer />
+      <Footer onOpenDownload={handleOpenDownload} />
+
+      {/* Registration & Download Modal */}
+      <DownloadModal isOpen={isDownloadOpen} onClose={handleCloseDownload} />
     </div>
   );
 }

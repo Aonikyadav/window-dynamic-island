@@ -1,7 +1,7 @@
 import React from 'react';
 import styles from './Footer.module.css';
 
-export function Footer() {
+export function Footer({ onOpenDownload }) {
   return (
     <footer class={styles.footer}>
       <div class={styles.container}>
@@ -10,20 +10,20 @@ export function Footer() {
             <span>🏝️ Dynamic<span class={styles.roseText}>Island</span></span>
           </div>
           <p class={styles.desc}>
-            A hardware-accelerated, 60 FPS Dynamic Island overlay for Windows desktops built with Win32, Direct2D, and WinRT APIs.
+            A hardware-accelerated, 60 FPS Dynamic Island overlay for Windows 10 & 11 desktops built with Win32, Direct2D, and WinRT APIs.
           </p>
         </div>
 
         <div class={styles.links}>
-          <h4 class={styles.linksTitle}>Navigation</h4>
+          <h4 class={styles.linksTitle}>Quick Links</h4>
           <a href="https://github.com/Aonikyadav/window-dynamic-island" target="_blank" rel="noreferrer" class={styles.link}>
-            GitHub Repository
+            <i class="fa-brands fa-github" /> Official GitHub Repository
           </a>
-          <a href="https://github.com/Aonikyadav/window-dynamic-island/releases" target="_blank" rel="noreferrer" class={styles.link}>
-            Latest Releases (EXE)
-          </a>
+          <button onClick={onOpenDownload} class={styles.link} style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer' }}>
+            <i class="fa-solid fa-download" /> Download Standalone (EXE)
+          </button>
           <a href="https://github.com/Aonikyadav/window-dynamic-island/issues" target="_blank" rel="noreferrer" class={styles.link}>
-            Report an Issue
+            <i class="fa-solid fa-bug" /> Report an Issue / Request Feature
           </a>
         </div>
 

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import styles from './HeroSection.module.css';
 import { RadarScanner } from '../effects/RadarScanner';
 
-export function HeroSection() {
+export function HeroSection({ onOpenDownload }) {
   const [activePillIndex, setActivePillIndex] = useState(0);
 
   const pillModes = [
@@ -97,10 +97,16 @@ export function HeroSection() {
           <p class={styles.colDesc}>
             A fluid, hardware-accelerated top display island bringing notifications, media waveforms, speech dictation, weather forecasts, and system metrics directly to your Windows desktop.
           </p>
-          <a href="#simulator" class={styles.btnSlanted}>
-            <span>EXPLORE LIVE SIMULATOR</span>
-            <i class="fa-solid fa-angles-right" />
-          </a>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <button onClick={onOpenDownload} class={styles.btnSlanted} style={{ background: 'var(--rose-primary)', color: '#fff', border: 'none' }}>
+              <span>DOWNLOAD NOW</span>
+              <i class="fa-solid fa-download" />
+            </button>
+            <a href="#simulator" class={styles.btnSlanted}>
+              <span>LIVE SIMULATOR</span>
+              <i class="fa-solid fa-angles-right" />
+            </a>
+          </div>
         </motion.div>
 
         {/* Right Column */}

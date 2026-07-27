@@ -1,7 +1,7 @@
 import React from 'react';
 import styles from './Header.module.css';
 
-export function Header() {
+export function Header({ onOpenDownload }) {
   return (
     <header class={styles.header}>
       <div class={styles.container}>
@@ -12,25 +12,29 @@ export function Header() {
 
         <nav class={styles.nav}>
           <a href="#" class={`${styles.navLink} ${styles.navLinkActive}`}>HOME</a>
-          <a href="#showcase" class={styles.navLink}>SHOWCASE</a>
+          <a href="#simulator" class={styles.navLink}>SHOWCASE</a>
+          <a href="#ai" class={styles.navLink}>VOICE AI</a>
           <a href="#features" class={styles.navLink}>FEATURES</a>
-          <a href="#gallery" class={styles.navLink}>GALLERY</a>
-          <a href="#setup" class={styles.navLink}>SUPPORT</a>
+          <a href="#setup" class={styles.navLink}>DOWNLOAD & SETUP</a>
         </nav>
 
         <div class={styles.rightGroup}>
-          <div class={styles.searchIcon} title="Search">
-            <i class="fa-solid fa-magnifying-glass" />
-          </div>
           <a
-            href="https://github.com/Aonikyadav/window-dynamic-island/releases/latest"
+            href="https://github.com/Aonikyadav/window-dynamic-island"
             target="_blank"
             rel="noreferrer"
+            class={styles.searchIcon}
+            title="GitHub Repository"
+          >
+            <i class="fa-brands fa-github" style={{ fontSize: '1.2rem' }} />
+          </a>
+          <button
+            onClick={onOpenDownload}
             class={styles.ctaBtn}
           >
             <span>DOWNLOAD</span>
-            <i class="fa-solid fa-arrow-right" />
-          </a>
+            <i class="fa-solid fa-arrow-down-long" />
+          </button>
         </div>
       </div>
     </header>

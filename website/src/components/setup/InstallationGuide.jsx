@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import styles from './InstallationGuide.module.css';
 
-export function InstallationGuide() {
+export function InstallationGuide({ onOpenDownload }) {
   const [activeTab, setActiveTab] = useState('exe');
 
   return (
@@ -52,9 +52,20 @@ export function InstallationGuide() {
                 <div class={styles.stepNum}>1</div>
                 <div>
                   <strong style={{ color: 'var(--text-bright)' }}>Download: </strong>
-                  <a href="https://github.com/Aonikyadav/window-dynamic-island/releases/latest" target="_blank" rel="noreferrer" style={{ color: 'var(--rose-primary)', fontWeight: 700 }}>
-                    DynamicIsland.exe (v1.6.1)
-                  </a>
+                  <button
+                    onClick={onOpenDownload}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--rose-primary)',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      fontSize: '1rem',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    DynamicIsland.exe (v1.0.0)
+                  </button>
                 </div>
               </div>
               <div class={styles.step}>
@@ -68,7 +79,7 @@ export function InstallationGuide() {
                 <div class={styles.stepNum}>3</div>
                 <div>
                   <strong style={{ color: 'var(--text-bright)' }}>Configure: </strong>
-                  <span>Right-click the island to launch native settings, toggle auto-start, and set opacity.</span>
+                  <span>Right-click the island or click the gear icon to launch native settings, toggle auto-start, set custom wake words, and opacity.</span>
                 </div>
               </div>
             </div>
@@ -96,7 +107,7 @@ export function InstallationGuide() {
                 <div class={styles.stepNum}>2</div>
                 <div>
                   <strong style={{ color: 'var(--text-bright)' }}>Paste Source: </strong>
-                  <span>Copy C++ source code from <code>window-dynamic-island.wh.cpp</code>.</span>
+                  <span>Copy C++ source code from <a href="https://github.com/Aonikyadav/window-dynamic-island/blob/main/src/window-dynamic-island.wh.cpp" target="_blank" rel="noreferrer" style={{ color: 'var(--rose-primary)' }}><code>window-dynamic-island.wh.cpp</code></a>.</span>
                 </div>
               </div>
               <div class={styles.step}>
