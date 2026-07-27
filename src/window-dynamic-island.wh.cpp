@@ -196,6 +196,23 @@ The Dynamic Island intelligently expands to display context-aware dashboards. Yo
     $name: Use Fahrenheit
     $description: Display weather temperature and wind speed in imperial units.
   $name: Modules & Features
+- VoiceAssistant:
+  - EnableAssistant: true
+    $name: Enable Voice Assistant Mode
+    $description: Turn on the AI Voice Assistant feature.
+  - EnableWakeWord: true
+    $name: Enable Voice Wake Word
+    $description: Turn on hands-free voice wake word detection.
+  - WakeWord: "Hey Jarvis"
+    $name: Custom Wake Word Phrase
+    $description: Type your custom activation phrase (e.g. Hey Jarvis, Hey Nova, Computer, Friday, Athena, Hey Baby).
+  - Sensitivity: 1
+    $name: Recognition Sensitivity
+    $description: Select sensitivity level (0 = Low, 1 = Medium, 2 = High).
+  - AutoStartListening: true
+    $name: Auto Start Listening on Boot
+    $description: Automatically start wake word listening when Windhawk starts.
+  $name: Voice & Speech Assistant
 */
 // ==/WindhawkModSettings==
 
@@ -901,8 +918,10 @@ void LoadSettings() {
     next.weatherCity = GetStringSettingCopy(L"Modules.WeatherCity");
     next.weatherFahrenheit = Wh_GetIntSetting(L"Modules.WeatherFahrenheit") != 0;
     next.enableMiniPillNav = Wh_GetIntSetting(L"Modules.EnableMiniPillNav") != 0;
-    next.assistantEnabled = Wh_GetIntSetting(L"Assistant.EnableAssistant") != 0;
+    next.assistantEnabled = Wh_GetIntSetting(L"VoiceAssistant.EnableAssistant") != 0;
     next.voiceWakeWordEnabled = next.assistantEnabled && (Wh_GetIntSetting(L"VoiceAssistant.EnableWakeWord") != 0);
+    const std::wstring wakeWord = GetStringSettingCopy(L"VoiceAssistant.WakeWord");
+    next.voiceWakeWord = wakeWord.empty() ? L"Hey Jarvis" : wakeWord;
     const std::wstring hideSec = GetStringSettingCopy(L"Appearance.AutoHideIdleSeconds");
     next.autoHideIdleSeconds = hideSec.empty() ? 0 : _wtoi(hideSec.c_str());
     next.unhideOnHover = Wh_GetIntSetting(L"Appearance.UnhideOnHover") != 0;
