@@ -7,7 +7,7 @@ A smooth, interactive overlay for your desktop, inspired by Apple's Dynamic Isla
 ## 📸 See it in Action
 
 <p align="center">
-  <img src="previews/Full-preview.png" alt="Dynamic Island Preview" width="600" style="border-radius: 8px; margin: 10px;"/>
+  <img src="previews/home.png" alt="Dynamic Island Preview" width="600" style="border-radius: 8px; margin: 10px;"/>
 </p>
 
 ### Dashboards

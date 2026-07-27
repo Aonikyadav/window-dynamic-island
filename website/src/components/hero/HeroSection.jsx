@@ -55,36 +55,30 @@ export function HeroSection() {
         DYNAMIC ISLAND
       </div>
 
-      {/* Featured Desktop Screenshot Showcase (Full-preview.png -> home.png) */}
+      {/* Seamless Character Centerpiece (home.png Girl Cutout - NO BOX BORDER!) */}
       <div class={styles.heroVisualCenter}>
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          class={styles.heroFrameContainer}
-        >
-          {/* Animated Morphing Island Pill Floating Above Desktop */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pillModes[activePillIndex].id}
-              initial={{ opacity: 0, scale: 0.85, y: -5 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.85, y: 5 }}
-              transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-              class={styles.heroIslandPill}
-            >
-              {pillModes[activePillIndex].content}
-            </motion.div>
-          </AnimatePresence>
+        {/* Animated Morphing Island Pill Floating Above Character */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={pillModes[activePillIndex].id}
+            initial={{ opacity: 0, scale: 0.85, y: -5 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.85, y: 5 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+            class={styles.heroIslandPill}
+          >
+            {pillModes[activePillIndex].content}
+          </motion.div>
+        </AnimatePresence>
 
-          <div class={styles.heroFrameInner}>
-            <img
-              src="/assets/home.png?v=3"
-              alt="Dynamic Island Desktop Home Preview"
-              class={styles.heroDesktopImg}
-            />
-          </div>
-        </motion.div>
+        <motion.img
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8 }}
+          src="/assets/home.png?v=5"
+          alt="Dynamic Island Cyberpunk Girl Cutout"
+          class={styles.heroGirlCutout}
+        />
       </div>
 
       {/* Dual Column High-Contrast Content */}

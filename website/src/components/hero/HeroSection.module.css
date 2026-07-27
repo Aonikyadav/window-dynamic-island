@@ -32,54 +32,40 @@
   text-shadow: 0 0 50px rgba(255, 42, 133, 0.25);
 }
 
-/* Center Desktop Mockup Showcase (home.png) */
+/* Seamless Background Girl Character Centerpiece (NO BOX BORDER!) */
 .heroVisualCenter {
-  position: relative;
-  z-index: 5;
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: 100%;
-  max-width: 780px;
-  margin: 1.5rem auto 2.5rem;
+  max-width: 680px;
+  z-index: 3;
+  pointer-events: none;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
 }
 
-.heroFrameContainer {
-  position: relative;
+.heroGirlCutout {
   width: 100%;
-  border-radius: 16px;
-  padding: 5px;
-  background: linear-gradient(135deg, rgba(255, 42, 133, 0.45), rgba(140, 26, 255, 0.25), rgba(255, 255, 255, 0.1));
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9), 0 0 45px rgba(255, 42, 133, 0.25);
+  max-height: 540px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 45px rgba(255, 42, 133, 0.55));
   animation: float-hero 6s infinite alternate ease-in-out;
-  overflow: hidden;
 }
 
-.heroFrameInner {
-  position: relative;
-  width: 100%;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #050308;
-}
-
-.heroDesktopImg {
-  width: 100%;
-  height: auto;
-  display: block;
-  border-radius: 10px;
-}
-
-/* Floating Live Island Pill Overlay over Desktop Screenshot */
+/* Floating Animated Morphing Island Pill */
 .heroIslandPill {
   position: absolute;
-  top: 14px;
+  top: -15px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
   background: #000;
   border: 1.5px solid var(--rose-primary);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.85), 0 0 20px var(--rose-glow);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.85), 0 0 22px var(--rose-glow);
   color: #fff;
   border-radius: 99px;
   padding: 0.45rem 1.2rem;
@@ -126,6 +112,7 @@
   gap: 4rem;
   justify-content: space-between;
   width: 100%;
+  margin-top: 4rem;
 }
 
 .leftCol {
@@ -236,7 +223,7 @@
   box-shadow: 0 0 30px var(--rose-glow);
 }
 
-/* Floating Glassmorphic HUD Bar (Fixed Unclipped Alignment) */
+/* Floating Glassmorphic HUD Bar (Unclipped Alignment) */
 .hudBar {
   position: absolute;
   bottom: 20px;
