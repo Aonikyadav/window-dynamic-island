@@ -1,8 +1,8 @@
 import { MongoClient } from 'mongodb';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://aonikyadavcs23_db_user:Eventra-CampuTix@cluster0.nbrl6dn.mongodb.net/test?retryWrites=true&w=majority&appName=Cluster0';
-const DB_NAME = process.env.DB_NAME || 'test';
-const COLLECTION_NAME = process.env.COLLECTION_NAME || 'users';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://aonikyadavcs23_db_user:Eventra-CampuTix@cluster0.nbrl6dn.mongodb.net/dynamic_island?retryWrites=true&w=majority&appName=Cluster0';
+const DB_NAME = process.env.DB_NAME || 'dynamic_island';
+const COLLECTION_NAME = process.env.COLLECTION_NAME || 'di_users';
 
 let cachedClient = null;
 
@@ -35,7 +35,6 @@ export default async function handler(req, res) {
     const collection = db.collection(COLLECTION_NAME);
 
     const userDoc = {
-      name: fullName.trim(),
       fullName: fullName.trim(),
       email: email.trim().toLowerCase(),
       profession,
@@ -50,7 +49,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: 'Registration saved successfully in Eventra MongoDB (test -> users).',
+      message: 'Registration saved successfully in Eventra MongoDB (dynamic_island -> di_users).',
       id: result.insertedId,
     });
   } catch (error) {
