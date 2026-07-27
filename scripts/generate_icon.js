@@ -1,4 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+import fs from 'fs';
+import path from 'path';
+
+// Let's create an SVG string for the Cyberpunk Rosé Dynamic Island icon
+const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <defs>
     <!-- Dark Background Gradient -->
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -75,4 +79,17 @@
   <!-- Bottom Accent Typography Indicator -->
   <text x="256" y="376" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="34" letter-spacing="6" fill="#ffffff" text-anchor="middle" opacity="0.95">DYNAMIC ISLAND</text>
   <text x="256" y="412" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="700" font-size="18" letter-spacing="4" fill="#ff0055" text-anchor="middle" opacity="0.9">FOR WINDOWS</text>
-</svg>
+</svg>`;
+
+// Save SVG to res/app_icon.svg and website/public/favicon.svg
+const resDir = path.resolve('res');
+if (!fs.existsSync(resDir)) fs.mkdirSync(resDir, { recursive: true });
+
+fs.writeFileSync(path.join(resDir, 'app_icon.svg'), svgContent);
+
+const websitePublic = path.resolve('website/public');
+if (!fs.existsSync(websitePublic)) fs.mkdirSync(websitePublic, { recursive: true });
+
+fs.writeFileSync(path.join(websitePublic, 'favicon.svg'), svgContent);
+
+console.log('SVG icon generated successfully!');

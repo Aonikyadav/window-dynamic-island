@@ -292,6 +292,7 @@ using namespace std::chrono_literals;
 #include "../new_feature/contracts.h"
 #include "../new_feature/event_bus.h"
 #include "../new_feature/audio_capture.h"
+#include "app_icon_data.h"
 #include "../new_feature/stt_service.h"
 #include "../new_feature/intent_router.h"
 #include "../new_feature/skills.h"
@@ -4296,15 +4297,68 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         g_lastInteractionTime.store(NowSeconds());
     }
     switch (msg) {
-        case WM_CREATE:
+        case WM_CREATE: {
             AddClipboardFormatListener(hwnd);
             RegisterShellHookWindow(hwnd);
-            return 0;
 
-        case WM_DESTROY:
+            // Register System Tray Icon
+            NOTIFYICONDATAW nid = {};
+            nid.cbSize = sizeof(NOTIFYICONDATAW);
+            nid.hWnd = hwnd;
+            nid.uID = 1001;
+            nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+            nid.uCallbackMessage = WM_USER + 555;
+            nid.hIcon = GetDynamicIslandAppIcon(32, 32);
+            wcscpy_s(nid.szTip, L"Dynamic Island for Windows");
+            Shell_NotifyIconW(NIM_ADD, &nid);
+
+            // Set Window Icons for Taskbar and Task Manager
+            HICON hBigIcon = GetDynamicIslandAppIcon(64, 64);
+            HICON hSmIcon = GetDynamicIslandAppIcon(16, 16);
+            SendMessageW(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hBigIcon);
+            SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hSmIcon);
+            return 0;
+        }
+
+        case WM_DESTROY: {
+            NOTIFYICONDATAW nid = {};
+            nid.cbSize = sizeof(NOTIFYICONDATAW);
+            nid.hWnd = hwnd;
+            nid.uID = 1001;
+            Shell_NotifyIconW(NIM_DELETE, &nid);
             RemoveClipboardFormatListener(hwnd);
             DeregisterShellHookWindow(hwnd);
             return 0;
+        }
+
+        case (WM_USER + 555): {
+            if (lParam == WM_RBUTTONUP || lParam == WM_LBUTTONUP || lParam == WM_CONTEXTMENU) {
+                POINT pt;
+                GetCursorPos(&pt);
+                HMENU hMenu = CreatePopupMenu();
+                AppendMenuW(hMenu, MF_STRING, 6001, L"⚙️  Settings");
+                AppendMenuW(hMenu, MF_STRING, 6002, L"🔄  Restart Dynamic Island");
+                AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
+                AppendMenuW(hMenu, MF_STRING, 6003, L"❌  Exit Dynamic Island");
+
+                SetForegroundWindow(hwnd);
+                int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_NONOTIFY, pt.x, pt.y, 0, hwnd, nullptr);
+                DestroyMenu(hMenu);
+
+                if (cmd == 6001) {
+                    OpenSettingsDialog(hwnd);
+                } else if (cmd == 6002) {
+                    wchar_t path[MAX_PATH] = {};
+                    GetModuleFileNameW(nullptr, path, MAX_PATH);
+                    ShellExecuteW(nullptr, L"open", path, nullptr, nullptr, SW_SHOW);
+                    if (g_stopEvent) SetEvent(g_stopEvent);
+                } else if (cmd == 6003) {
+                    if (g_stopEvent) SetEvent(g_stopEvent);
+                    PostQuitMessage(0);
+                }
+            }
+            return 0;
+        }
 
         case WM_APP_CAPSLOCK: {
             bool isNum = (wParam == VK_NUMLOCK);
@@ -7541,6 +7595,8 @@ void OpenSettingsDialog(HWND parent) {
     wcx.hInstance = hInst;
     wcx.lpszClassName = L"DynamicIslandSettingsClass";
     wcx.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    wcx.hIcon = GetDynamicIslandAppIcon(64, 64);
+    wcx.hIconSm = GetDynamicIslandAppIcon(16, 16);
     wcx.hbrBackground = (HBRUSH)COLOR_WINDOW;
     RegisterClassExW(&wcx);
 

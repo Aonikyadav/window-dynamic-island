@@ -16,8 +16,10 @@
     "express": "^5.2.1",
     "framer-motion": "^12.42.2",
     "mongodb": "^7.5.0",
+    "png-to-ico": "^3.0.2",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",
