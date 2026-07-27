@@ -35,11 +35,11 @@
 /* Seamless Background Girl Character Centerpiece (NO BOX BORDER!) */
 .heroVisualCenter {
   position: absolute;
-  top: 48%;
+  top: 45%;
   left: 50%;
   transform: translate(-50%, -50%);
   width: 100%;
-  max-width: 680px;
+  max-width: 920px;
   z-index: 3;
   pointer-events: none;
   display: flex;
@@ -50,10 +50,11 @@
 
 .heroGirlCutout {
   width: 100%;
-  max-height: 540px;
+  max-height: 720px;
   object-fit: contain;
-  filter: drop-shadow(0 0 45px rgba(255, 42, 133, 0.55));
+  filter: drop-shadow(0 0 55px rgba(255, 42, 133, 0.65));
   animation: float-hero 6s infinite alternate ease-in-out;
+  transform: scale(1.35);
 }
 
 /* Floating Animated Morphing Island Pill */
