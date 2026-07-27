@@ -939,12 +939,6 @@ void LoadSettings() {
         SetStartupRegistry(next.startWithWindows);
     }
 
-    next.voiceWakeWordEnabled = Wh_GetIntSetting(L"VoiceAssistant.EnableWakeWord") != 0;
-    const std::wstring wakeWord = GetStringSettingCopy(L"VoiceAssistant.WakeWord");
-    if (!wakeWord.empty()) {
-        next.voiceWakeWord = wakeWord;
-    }
-
     std::wstring mon = GetStringSettingCopy(L"Appearance.TargetMonitor");
     if (mon == L"primary") next.targetMonitor = 0;
     else if (mon == L"follow") next.targetMonitor = -1;
