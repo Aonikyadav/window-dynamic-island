@@ -35,11 +35,11 @@ export default async function handler(req, res) {
     const collection = db.collection(COLLECTION_NAME);
 
     const userDoc = {
-      fullName: fullName.trim(),
-      email: email.trim().toLowerCase(),
-      profession,
-      collegeName: profession === 'Student' ? collegeName.trim() : null,
-      yearOfStudy: profession === 'Student' ? yearOfStudy : null,
+      fullName: String(fullName || '').trim(),
+      email: String(email || '').trim().toLowerCase(),
+      profession: String(profession || 'Other').trim(),
+      collegeName: (profession === 'Student' && collegeName) ? String(collegeName).trim() : 'N/A',
+      yearOfStudy: (profession === 'Student' && yearOfStudy) ? String(yearOfStudy).trim() : 'N/A',
       source: 'Dynamic-Island-for-Windows',
       app: 'Dynamic-Island-for-Windows',
       createdAt: new Date(),
