@@ -4,8 +4,8 @@
 #include <string>
 #include <shellapi.h>
 #include <map>
-
 #include <functional>
+#include <algorithm>
 
 namespace ai {
 
@@ -21,97 +21,94 @@ public:
 };
 
 // ============================================================================
-// AppsSkill - Launches/closes apps by name
-// Supported commands:
-//   "open chrome", "launch chrome"
-//   "open spotify", "launch spotify"
-//   "open notepad", "open calculator", "open settings", "open task manager"
-//   "open vs code", "open code", "open explorer", "open files"
-//   "open youtube", "open google"
-//   "close chrome", "close it"
+// AppsSkill - Launches & Closes Applications and Websites
 // ============================================================================
 
 class AppsSkill : public ISkill {
 private:
     struct AppInfo {
         std::wstring exe;    // executable to run with ShellExecute
-        std::wstring uri;    // optional URI (e.g. for browser sites)
+        std::wstring uri;    // optional URI (e.g. for websites or Windows UWP)
     };
 
-    // Maps recognized app name → launch command
-    // Key is lowercase alias. Searched from longest to first match.
+    // Maps recognized app name / alias → launch command
     std::map<std::wstring, AppInfo> apps_ = {
-        // Browsers
+        // ── Web Browsers ──────────────────────────────────────────────────
         {L"chrome",             {L"chrome.exe",         L""}},
         {L"google chrome",      {L"chrome.exe",         L""}},
-        {L"web browser",        {L"chrome.exe",         L""}},
-        {L"browser",            {L"chrome.exe",         L""}},
-        {L"internet",           {L"chrome.exe",         L""}},
-        {L"firefox",            {L"firefox.exe",        L""}},
         {L"edge",               {L"msedge.exe",         L""}},
         {L"microsoft edge",     {L"msedge.exe",         L""}},
-        {L"brave",              {L"brave.exe",          L""}},
+        {L"firefox",            {L"firefox.exe",        L""}},
+        {L"browser",            {L"chrome.exe",         L""}},
 
-        // Web shortcuts (launch in default browser)
+        // ── Websites ──────────────────────────────────────────────────────
         {L"youtube",            {L"",                   L"https://www.youtube.com"}},
         {L"google",             {L"",                   L"https://www.google.com"}},
         {L"github",             {L"",                   L"https://github.com"}},
-        {L"chatgpt",            {L"",                   L"https://chat.openai.com"}},
-        {L"chat gpt",           {L"",                   L"https://chat.openai.com"}},
+        {L"chatgpt",            {L"",                   L"https://chatgpt.com"}},
+        {L"chat gpt",           {L"",                   L"https://chatgpt.com"}},
+        {L"gmail",              {L"",                   L"https://mail.google.com"}},
+        {L"linkedin",           {L"",                   L"https://www.linkedin.com"}},
+        {L"x",                  {L"",                   L"https://x.com"}},
+        {L"twitter",            {L"",                   L"https://x.com"}},
+        {L"reddit",             {L"",                   L"https://www.reddit.com"}},
 
-        // Media & Music
-        {L"spotify",            {L"spotify.exe",        L""}},
-        {L"music",              {L"spotify.exe",        L""}},
-        {L"music player",       {L"spotify.exe",        L""}},
-        {L"audio player",       {L"spotify.exe",        L""}},
-
-        // Development tools
-        {L"vs code",            {L"code.cmd",           L""}},
-        {L"vscode",             {L"code.cmd",           L""}},
-        {L"visual studio code", {L"code.cmd",           L""}},
-        {L"code editor",        {L"code.cmd",           L""}},
-        {L"code",               {L"code.cmd",           L""}},
-        {L"visual studio",      {L"devenv.exe",         L""}},
-        {L"notepad",            {L"notepad.exe",        L""}},
-        {L"notepad plus",       {L"notepad++.exe",      L""}},
-        {L"notepad++",          {L"notepad++.exe",      L""}},
-        {L"cmd",                {L"cmd.exe",            L""}},
-        {L"command prompt",     {L"cmd.exe",            L""}},
-        {L"terminal",           {L"wt.exe",             L""}},
-        {L"console",            {L"cmd.exe",            L""}},
-        {L"powershell",         {L"powershell.exe",     L""}},
-
-        // Windows built-ins & System Tools
-        {L"calculator",         {L"calc.exe",           L""}},
-        {L"calc",               {L"calc.exe",           L""}},
-        {L"math",               {L"calc.exe",           L""}},
-        {L"paint",              {L"mspaint.exe",        L""}},
-        {L"word pad",           {L"wordpad.exe",        L""}},
-        {L"wordpad",            {L"wordpad.exe",        L""}},
-        {L"explorer",           {L"explorer.exe",       L""}},
-        {L"file explorer",      {L"explorer.exe",       L""}},
-        {L"files",              {L"explorer.exe",       L""}},
-        {L"my computer",        {L"explorer.exe",       L""}},
-        {L"this pc",            {L"explorer.exe",       L""}},
+        // ── Windows System Applications ───────────────────────────────────
         {L"settings",           {L"ms-settings:",       L""}},
         {L"windows settings",   {L"ms-settings:",       L""}},
-        {L"system settings",    {L"ms-settings:",       L""}},
         {L"task manager",       {L"taskmgr.exe",        L""}},
         {L"taskmgr",            {L"taskmgr.exe",        L""}},
-        {L"activity monitor",   {L"taskmgr.exe",        L""}},
-        {L"system monitor",     {L"taskmgr.exe",        L""}},
-        {L"clock",              {L"ms-clock:",          L""}},
+        {L"calculator",         {L"calc.exe",           L""}},
+        {L"calc",               {L"calc.exe",           L""}},
+        {L"notepad",            {L"notepad.exe",        L""}},
+        {L"notepad++",          {L"notepad++.exe",      L""}},
+        {L"notepad plus",       {L"notepad++.exe",      L""}},
+        {L"paint",              {L"mspaint.exe",        L""}},
+        {L"cmd",                {L"cmd.exe",            L""}},
+        {L"command prompt",     {L"cmd.exe",            L""}},
+        {L"powershell",         {L"powershell.exe",     L""}},
+        {L"terminal",           {L"wt.exe",             L""}},
+        {L"windows terminal",   {L"wt.exe",             L""}},
+        {L"explorer",           {L"explorer.exe",       L""}},
+        {L"file explorer",      {L"explorer.exe",       L""}},
+        {L"control panel",      {L"control.exe",        L""}},
+        {L"device manager",     {L"devmgmt.msc",        L""}},
+        {L"disk management",    {L"diskmgmt.msc",       L""}},
+        {L"registry editor",    {L"regedit.exe",        L""}},
+        {L"regedit",            {L"regedit.exe",        L""}},
         {L"camera",             {L"microsoft.windows.camera:", L""}},
+        {L"snipping tool",      {L"snippingtool.exe",   L""}},
+        {L"snip",               {L"snippingtool.exe",   L""}},
+        {L"clock",              {L"ms-clock:",          L""}},
         {L"store",              {L"ms-windows-store:",  L""}},
         {L"microsoft store",    {L"ms-windows-store:",  L""}},
         {L"mail",               {L"outlookmail:",       L""}},
-        {L"snipping tool",      {L"snippingtool.exe",   L""}},
-        {L"snip",               {L"snippingtool.exe",   L""}},
-        {L"control panel",      {L"control.exe",        L""}},
-        {L"disk management",    {L"diskmgmt.msc",       L""}},
-        {L"device manager",     {L"devmgmt.msc",        L""}},
-        {L"registry editor",    {L"regedit.exe",        L""}},
-        {L"regedit",            {L"regedit.exe",        L""}},
+
+        // ── Development Tools ─────────────────────────────────────────────
+        {L"vs code",            {L"code.cmd",           L""}},
+        {L"vscode",             {L"code.cmd",           L""}},
+        {L"visual studio code", {L"code.cmd",           L""}},
+        {L"code",               {L"code.cmd",           L""}},
+        {L"visual studio",      {L"devenv.exe",         L""}},
+        {L"intellij",           {L"idea64.exe",         L""}},
+        {L"intellij idea",      {L"idea64.exe",         L""}},
+        {L"android studio",     {L"studio64.exe",       L""}},
+        {L"eclipse",            {L"eclipse.exe",        L""}},
+        {L"github desktop",     {L"GitHubDesktop.exe",  L""}},
+        {L"docker",             {L"Docker Desktop.exe", L""}},
+        {L"docker desktop",     {L"Docker Desktop.exe", L""}},
+        {L"postman",            {L"Postman.exe",        L""}},
+
+        // ── Media Applications ─────────────────────────────────────────────
+        {L"spotify",            {L"spotify.exe",        L""}},
+        {L"vlc",                {L"vlc.exe",            L""}},
+        {L"media player",       {L"wmplayer.exe",       L""}},
+        {L"windows media player", {L"wmplayer.exe",     L""}},
+        {L"apple music",        {L"AppleMusic.exe",     L""}},
+        {L"tidal",              {L"TIDAL.exe",          L""}},
+        {L"amazon music",       {L"Amazon Music.exe",   L""}},
+        {L"obs",                {L"obs64.exe",          L""}},
+        {L"discord",            {L"Discord.exe",        L""}},
     };
 
     std::wstring ToLower(std::wstring s) {
@@ -134,7 +131,8 @@ public:
         if (intent.name == L"LAUNCH_APP") {
             std::wstring app = ToLower(intent.target);
 
-            if (app == L"speech to text" || app == L"stt" || app == L"speech-to-text") {
+            // Dashboard Page Navigation
+            if (app == L"speech to text" || app == L"stt" || app == L"speech-to-text" || app == L"dictation") {
                 if (onStartStt) onStartStt();
                 result.success = true;
                 result.voiceFeedback = L"Opening Speech to Text";
@@ -162,6 +160,27 @@ public:
                 result.visualFeedback = L"Battery";
                 return result;
             }
+            if (app == L"system status" || app == L"system") {
+                if (onSetMiniPill) onSetMiniPill(5);
+                result.success = true;
+                result.voiceFeedback = L"Opening System Status";
+                result.visualFeedback = L"System Status";
+                return result;
+            }
+            if (app == L"tools" || app == L"tools & utilities" || app == L"utilities") {
+                if (onSetMiniPill) onSetMiniPill(8);
+                result.success = true;
+                result.voiceFeedback = L"Opening Tools";
+                result.visualFeedback = L"Tools";
+                return result;
+            }
+            if (app == L"media") {
+                if (onSetMiniPill) onSetMiniPill(1);
+                result.success = true;
+                result.voiceFeedback = L"Opening Media Player";
+                result.visualFeedback = L"Media Player";
+                return result;
+            }
 
             // Find best match (longest key match wins)
             const AppInfo* best = nullptr;
@@ -176,7 +195,6 @@ public:
             if (best) {
                 HINSTANCE inst;
                 if (!best->uri.empty()) {
-                    // Open URL in default browser
                     inst = ShellExecuteW(nullptr, L"open", best->uri.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
                 } else {
                     inst = ShellExecuteW(nullptr, L"open", best->exe.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
@@ -188,11 +206,11 @@ public:
                     result.visualFeedback = intent.target;
                 } else {
                     result.success = false;
-                    result.voiceFeedback = L"Sorry, I couldn't find " + intent.target;
-                    result.visualFeedback = L"Not found";
+                    result.voiceFeedback = L"Could not launch " + intent.target;
+                    result.visualFeedback = L"Launch failed";
                 }
             } else {
-                // Unknown app — try launching it by name directly
+                // Generic Fallback App Launch
                 std::wstring exeName = app + L".exe";
                 HINSTANCE inst = ShellExecuteW(nullptr, L"open", exeName.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
                 if ((INT_PTR)inst > 32) {
@@ -201,7 +219,7 @@ public:
                     result.visualFeedback = intent.target;
                 } else {
                     result.success = false;
-                    result.voiceFeedback = L"I don't know how to open " + intent.target + L". Try saying the exact app name.";
+                    result.voiceFeedback = L"Couldn't find application " + intent.target;
                     result.visualFeedback = L"App not found";
                 }
             }
@@ -241,7 +259,7 @@ public:
             if (helper.closedAny) {
                 result.success = true;
                 result.voiceFeedback = L"Closed " + intent.target;
-                result.visualFeedback = L"Closed";
+                result.visualFeedback = L"Closed " + intent.target;
             } else {
                 std::wstring exeName;
                 auto it = apps_.find(app);
@@ -256,10 +274,10 @@ public:
                 if (ret == 0) {
                     result.success = true;
                     result.voiceFeedback = L"Closed " + intent.target;
-                    result.visualFeedback = L"Closed";
+                    result.visualFeedback = L"Closed " + intent.target;
                 } else {
                     result.success = false;
-                    result.voiceFeedback = L"Couldn't find any running " + intent.target + L" to close.";
+                    result.voiceFeedback = L"Couldn't find running application " + intent.target;
                     result.visualFeedback = L"Not running";
                 }
             }
@@ -270,16 +288,14 @@ public:
 };
 
 // ============================================================================
-// SystemSkill - Volume, brightness, power controls
-// Supported commands:
-//   "mute", "unmute", "volume up", "volume down", "increase volume", "decrease volume"
-//   "sleep", "shutdown", "restart"
+// SystemSkill - Volume, Brightness, Power Controls
 // ============================================================================
 
 class SystemSkill : public ISkill {
 public:
     bool Supports(const Intent& intent) override {
-        return (intent.name == L"VOLUME_CONTROL" || intent.name == L"POWER_CONTROL");
+        return (intent.name == L"VOLUME_CONTROL" || intent.name == L"POWER_CONTROL"
+            || intent.name == L"BRIGHTNESS_CONTROL" || intent.name == L"BATTERY_CONTROL");
     }
 
     SkillResult Execute(const Intent& intent) override {
@@ -291,13 +307,16 @@ public:
             std::wstring action = (it != intent.parameters.end()) ? it->second : L"change";
 
             if (action == L"mute") {
-                // Send mute key
                 keybd_event(VK_VOLUME_MUTE, 0, 0, 0);
                 keybd_event(VK_VOLUME_MUTE, 0, KEYEVENTF_KEYUP, 0);
-                result.voiceFeedback = L"Muted";
+                result.voiceFeedback = L"Muted system volume";
                 result.visualFeedback = L"Muted";
+            } else if (action == L"unmute") {
+                keybd_event(VK_VOLUME_MUTE, 0, 0, 0);
+                keybd_event(VK_VOLUME_MUTE, 0, KEYEVENTF_KEYUP, 0);
+                result.voiceFeedback = L"Unmuted sound";
+                result.visualFeedback = L"Unmuted";
             } else if (action == L"increase") {
-                // Press volume up 5 times for a noticeable step
                 for (int i = 0; i < 5; ++i) {
                     keybd_event(VK_VOLUME_UP, 0, 0, 0);
                     keybd_event(VK_VOLUME_UP, 0, KEYEVENTF_KEYUP, 0);
@@ -316,21 +335,34 @@ public:
         else if (intent.name == L"POWER_CONTROL") {
             std::wstring state = intent.target;
             if (state == L"lock") {
-                result.voiceFeedback = L"Locking PC";
-                result.visualFeedback = L"Lock";
+                result.voiceFeedback = L"Locking computer";
+                result.visualFeedback = L"Locking PC";
                 LockWorkStation();
             } else if (state == L"sleep") {
-                result.voiceFeedback = L"Going to sleep";
+                result.voiceFeedback = L"Putting computer to sleep";
                 result.visualFeedback = L"Sleep";
                 system("rundll32.exe powrprof.dll,SetSuspendState 0,1,0");
             } else if (state == L"shutdown") {
-                result.voiceFeedback = L"Shutting down";
-                result.visualFeedback = L"Shutdown";
+                result.voiceFeedback = L"Shutting down computer in 5 seconds";
+                result.visualFeedback = L"Shutdown in 5s";
                 system("shutdown /s /t 5");
             } else if (state == L"restart") {
-                result.voiceFeedback = L"Restarting";
-                result.visualFeedback = L"Restart";
+                result.voiceFeedback = L"Restarting computer in 5 seconds";
+                result.visualFeedback = L"Restart in 5s";
                 system("shutdown /r /t 5");
+            }
+        }
+        else if (intent.name == L"BATTERY_CONTROL") {
+            SYSTEM_POWER_STATUS sps = {};
+            if (GetSystemPowerStatus(&sps)) {
+                int pct = sps.BatteryLifePercent;
+                bool charging = (sps.ACLineStatus == 1);
+                std::wstring msg = L"Battery is at " + std::to_wstring(pct) + L" percent" + (charging ? L" and charging" : L"");
+                result.voiceFeedback = msg;
+                result.visualFeedback = std::to_wstring(pct) + L"%" + (charging ? L" ⚡" : L"");
+            } else {
+                result.voiceFeedback = L"Battery status unavailable";
+                result.visualFeedback = L"Battery Status";
             }
         }
 
@@ -339,9 +371,7 @@ public:
 };
 
 // ============================================================================
-// CustomSpotifySkill - Spotify playback controls
-// Supported commands:
-//   "play", "pause", "next song", "previous song", "skip"
+// CustomSpotifySkill - Spotify & System Media Playback Controls
 // ============================================================================
 
 class CustomSpotifySkill : public ISkill {
@@ -360,7 +390,7 @@ public:
         if (action == L"play" || action == L"pause") {
             keybd_event(VK_MEDIA_PLAY_PAUSE, 0, 0, 0);
             keybd_event(VK_MEDIA_PLAY_PAUSE, 0, KEYEVENTF_KEYUP, 0);
-            result.voiceFeedback = (action == L"play") ? L"Playing" : L"Paused";
+            result.voiceFeedback = (action == L"play") ? L"Playing music" : L"Paused music";
             result.visualFeedback = (action == L"play") ? L"Play" : L"Pause";
         } else if (action == L"next") {
             keybd_event(VK_MEDIA_NEXT_TRACK, 0, 0, 0);

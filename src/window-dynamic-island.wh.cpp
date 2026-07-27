@@ -5765,7 +5765,22 @@ void TriggerWakeWordActivation() {
                 res = g_intentRouter->Route(text, g_contextManager->GetContext());
             }
 
-            if (res.intent.name == L"UNKNOWN") {
+            if (res.intent.name == L"ASSISTANT_CONTROL") {
+                if (res.intent.target == L"stop_speaking" && g_ttsService) {
+                    g_ttsService->Stop();
+                    skillRes.success = true;
+                    skillRes.visualFeedback = L"Stopped Speaking";
+                    skillRes.voiceFeedback = L"";
+                    executed = true;
+                } else if (res.intent.target == L"stop_listening") {
+                    skillRes.success = true;
+                    skillRes.visualFeedback = L"Stopped Listening";
+                    skillRes.voiceFeedback = L"";
+                    executed = true;
+                }
+            }
+
+            if (!executed && res.intent.name == L"UNKNOWN") {
                 skillRes.success = false;
                 skillRes.visualFeedback = L"Unknown: " + text;
                 skillRes.voiceFeedback = L"I heard: " + text + L". Try saying open, close, volume up, or mute.";

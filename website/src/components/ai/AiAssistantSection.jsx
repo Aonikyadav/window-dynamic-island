@@ -209,19 +209,19 @@ export function AiAssistantSection() {
 
             <div class={styles.infoCard}>
               <h3 class={styles.cardTitle}>
-                <i class="fa-solid fa-keyboard" /> Push-To-Talk (Ctrl + Space)
+                <i class="fa-solid fa-comments" /> Natural Language Speech Commands
               </h3>
               <p class={styles.cardDesc}>
-                Prefer hotkeys over voice? **Ctrl + Space** remains instantly available as a secondary push-to-talk activation shortcut anytime.
+                Supports flexible trigger verbs (*Open*, *Launch*, *Start*, *Run*, *Take me to*, *Close*, *Exit*, *Quit*, *Kill*) across apps, websites, media, volume, battery, system status, and context pronoun resolving (*"Close it"*).
               </p>
             </div>
 
             <div class={styles.infoCard}>
               <h3 class={styles.cardTitle}>
-                <i class="fa-solid fa-floppy-disk" /> Persisted & Applied Instantly
+                <i class="fa-solid fa-keyboard" /> Push-To-Talk (Ctrl + Space)
               </h3>
               <p class={styles.cardDesc}>
-                Your custom wake phrase, sensitivity level, and auto-start settings are saved to application configuration and persist across computer reboots.
+                Prefer hotkeys over voice? **Ctrl + Space** remains instantly available as a secondary push-to-talk activation shortcut anytime.
               </p>
             </div>
           </motion.div>

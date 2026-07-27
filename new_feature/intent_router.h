@@ -3,34 +3,12 @@
 #include "context_manager.h"
 #include <algorithm>
 #include <string>
+#include <vector>
 
 namespace ai {
 
 // ============================================================================
-// IntentRouter — fast keyword matching, ZERO network calls, instant results
-//
-// Trigger words recognized:
-//
-//  LAUNCH_APP:
-//    "open <app>", "launch <app>", "start <app>", "run <app>", "show me <app>"
-//    "go to youtube", "take me to google"
-//
-//  CLOSE_APP:
-//    "close <app>", "exit <app>", "quit <app>", "kill <app>", "close it"
-//
-//  VOLUME_CONTROL:
-//    "mute", "unmute", "volume up", "volume down",
-//    "increase volume", "decrease volume", "louder", "quieter"
-//
-//  MEDIA_CONTROL:
-//    "play", "pause", "next song", "skip", "previous", "next track"
-//
-//  POWER_CONTROL:
-//    "sleep", "sleep pc", "sleep computer",
-//    "shutdown", "shut down", "turn off",
-//    "restart", "reboot"
-//
-//  Unknown → shows "I don't understand" message (NO API call)
+// IntentRouter — Natural Speech Command Routing (Zero Network Delay)
 // ============================================================================
 
 class IntentRouter {
@@ -48,16 +26,6 @@ private:
         return str.rfind(prefix, 0) == 0;
     }
 
-    // Strip a leading verb prefix and return the remainder
-    std::wstring StripVerb(const std::wstring& text, const std::vector<std::wstring>& verbs) {
-        for (const auto& verb : verbs) {
-            if (StartsWith(text, verb + L" ")) {
-                return text.substr(verb.size() + 1);
-            }
-        }
-        return text;
-    }
-
 public:
     IntentResult Route(const std::wstring& text, const SessionContext& context = SessionContext()) {
         IntentResult result;
@@ -66,10 +34,32 @@ public:
         result.useLLM = false;
 
         std::wstring t = ToLower(text);
-        // Trim leading/trailing spaces
-        size_t s = t.find_first_not_of(L' ');
-        size_t e = t.find_last_not_of(L' ');
-        if (s != std::wstring::npos) t = t.substr(s, e - s + 1);
+
+        // Trim leading/trailing whitespace & punctuation
+        size_t s = t.find_first_not_of(L" \t\r\n.,!?");
+        size_t e = t.find_last_not_of(L" \t\r\n.,!?");
+        if (s != std::wstring::npos) {
+            t = t.substr(s, e - s + 1);
+        } else {
+            t = L"";
+        }
+
+        if (t.empty()) {
+            result.intent.name = L"UNKNOWN";
+            return result;
+        }
+
+        // ── 0. Assistant Self-Controls ─────────────────────────────────────────
+        if (t == L"stop speaking" || t == L"quiet" || t == L"be quiet" || t == L"shut up") {
+            result.intent.name = L"ASSISTANT_CONTROL";
+            result.intent.target = L"stop_speaking";
+            return result;
+        }
+        if (t == L"stop listening" || t == L"cancel" || t == L"go to sleep") {
+            result.intent.name = L"ASSISTANT_CONTROL";
+            result.intent.target = L"stop_listening";
+            return result;
+        }
 
         // ── 1. App Launching ──────────────────────────────────────────────────
         const std::vector<std::wstring> launchVerbs = {
@@ -87,7 +77,7 @@ public:
 
         // ── 2. App Closing ────────────────────────────────────────────────────
         const std::vector<std::wstring> closeVerbs = {
-            L"close", L"exit", L"quit", L"kill", L"shut"
+            L"close", L"exit", L"quit", L"kill", L"terminate"
         };
         for (const auto& verb : closeVerbs) {
             if (StartsWith(t, verb + L" ")) {
@@ -102,30 +92,28 @@ public:
             }
         }
 
-        // ── 3. Volume Control ─────────────────────────────────────────────────
+        // ── 3. Volume Controls ────────────────────────────────────────────────
         if (Contains(t, L"volume") || t == L"mute" || t == L"unmute"
-            || Contains(t, L"louder") || Contains(t, L"quieter")
-            || Contains(t, L"silent")) {
+            || Contains(t, L"louder") || Contains(t, L"quieter") || Contains(t, L"silent")
+            || Contains(t, L"turn sound")) {
 
             result.intent.name = L"VOLUME_CONTROL";
             result.intent.target = L"system_volume";
 
-            if (Contains(t, L"mute") || Contains(t, L"silent")) {
+            if (Contains(t, L"unmute") || t == L"turn sound on") {
+                result.intent.parameters[L"action"] = L"unmute";
+            } else if (Contains(t, L"mute") || Contains(t, L"silent") || t == L"turn sound off") {
                 result.intent.parameters[L"action"] = L"mute";
-            } else if (Contains(t, L"unmute")) {
-                result.intent.parameters[L"action"] = L"mute"; // toggle
-            } else if (Contains(t, L"up") || Contains(t, L"increase")
-                || Contains(t, L"louder") || Contains(t, L"raise")) {
+            } else if (Contains(t, L"up") || Contains(t, L"increase") || Contains(t, L"louder") || Contains(t, L"raise") || Contains(t, L"make it louder")) {
                 result.intent.parameters[L"action"] = L"increase";
-            } else if (Contains(t, L"down") || Contains(t, L"decrease")
-                || Contains(t, L"quieter") || Contains(t, L"lower")) {
+            } else if (Contains(t, L"down") || Contains(t, L"decrease") || Contains(t, L"quieter") || Contains(t, L"lower")) {
                 result.intent.parameters[L"action"] = L"decrease";
             }
             return result;
         }
 
         // ── 4. Media Controls ─────────────────────────────────────────────────
-        if (t == L"play" || t == L"resume") {
+        if (t == L"play" || t == L"resume" || t == L"continue") {
             result.intent.name = L"MEDIA_CONTROL";
             result.intent.parameters[L"action"] = L"play";
             return result;
@@ -135,19 +123,33 @@ public:
             result.intent.parameters[L"action"] = L"pause";
             return result;
         }
-        if (Contains(t, L"next") && (Contains(t, L"song") || Contains(t, L"track") || Contains(t, L"music"))
-            || t == L"next" || t == L"skip") {
+        if (Contains(t, L"next") || t == L"skip") {
             result.intent.name = L"MEDIA_CONTROL";
             result.intent.parameters[L"action"] = L"next";
             return result;
         }
-        if (Contains(t, L"previous") || Contains(t, L"prev") || Contains(t, L"last song")) {
+        if (Contains(t, L"previous") || Contains(t, L"prev") || t == L"last song" || t == L"go back") {
             result.intent.name = L"MEDIA_CONTROL";
             result.intent.parameters[L"action"] = L"previous";
             return result;
         }
 
-        // ── 5. Power Controls ─────────────────────────────────────────────────
+        // ── 5. Brightness Controls ─────────────────────────────────────────────
+        if (Contains(t, L"brightness") || Contains(t, L"brighter") || Contains(t, L"dim screen")) {
+            result.intent.name = L"BRIGHTNESS_CONTROL";
+            if (Contains(t, L"up") || Contains(t, L"increase") || Contains(t, L"brighter")) {
+                result.intent.parameters[L"action"] = L"increase";
+            } else {
+                result.intent.parameters[L"action"] = L"decrease";
+            }
+            return result;
+        }
+
+        // ── 6. Battery & Power Controls ────────────────────────────────────────
+        if (Contains(t, L"battery") || Contains(t, L"charging") || Contains(t, L"laptop battery")) {
+            result.intent.name = L"BATTERY_CONTROL";
+            return result;
+        }
         if (Contains(t, L"lock")) {
             result.intent.name = L"POWER_CONTROL";
             result.intent.target = L"lock";
@@ -158,8 +160,7 @@ public:
             result.intent.target = L"sleep";
             return result;
         }
-        if (Contains(t, L"shutdown") || Contains(t, L"shut down")
-            || Contains(t, L"turn off") || Contains(t, L"power off")) {
+        if (Contains(t, L"shutdown") || Contains(t, L"shut down") || Contains(t, L"turn off computer") || Contains(t, L"power off")) {
             result.intent.name = L"POWER_CONTROL";
             result.intent.target = L"shutdown";
             return result;
@@ -170,11 +171,40 @@ public:
             return result;
         }
 
-        // ── 6. Unrecognized — NO cloud API call ───────────────────────────────
+        // ── 7. Hardware & Network (Wi-Fi, Bluetooth, AirPods) ───────────────────
+        if (Contains(t, L"wifi") || Contains(t, L"wi-fi")) {
+            result.intent.name = L"NETWORK_CONTROL";
+            result.intent.target = L"wifi";
+            result.intent.parameters[L"action"] = (Contains(t, L"off") || Contains(t, L"disable")) ? L"off" : L"on";
+            return result;
+        }
+        if (Contains(t, L"bluetooth")) {
+            result.intent.name = L"NETWORK_CONTROL";
+            result.intent.target = L"bluetooth";
+            result.intent.parameters[L"action"] = (Contains(t, L"off") || Contains(t, L"disable")) ? L"off" : L"on";
+            return result;
+        }
+        if (Contains(t, L"airpods")) {
+            result.intent.name = L"AIRPODS_CONTROL";
+            if (Contains(t, L"disconnect")) result.intent.parameters[L"action"] = L"disconnect";
+            else if (Contains(t, L"connect")) result.intent.parameters[L"action"] = L"connect";
+            else result.intent.parameters[L"action"] = L"status";
+            return result;
+        }
+
+        // ── 8. Clipboard Controls ──────────────────────────────────────────────
+        if (Contains(t, L"clipboard")) {
+            result.intent.name = L"CLIPBOARD_CONTROL";
+            if (Contains(t, L"clear")) result.intent.parameters[L"action"] = L"clear";
+            else result.intent.parameters[L"action"] = L"show";
+            return result;
+        }
+
+        // ── 9. Unrecognized — Return UNKNOWN (No Cloud API Delay) ──────────────
         result.intent.name = L"UNKNOWN";
         result.intent.target = L"";
         result.confidence = 0.0f;
-        result.useLLM = false;  // ← was true before; disabled to stop API calls
+        result.useLLM = false;
         return result;
     }
 };
