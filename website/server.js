@@ -7,9 +7,9 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://aonikyadavcs23_db_user:Eventra-CampuTix@cluster0.nbrl6dn.mongodb.net/Eventra?retryWrites=true&w=majority&appName=Cluster0';
-const DB_NAME = process.env.DB_NAME || 'Eventra';
-const COLLECTION_NAME = 'Dynamic Island Users';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://aonikyadavcs23_db_user:Eventra-CampuTix@cluster0.nbrl6dn.mongodb.net/test?retryWrites=true&w=majority&appName=Cluster0';
+const DB_NAME = process.env.DB_NAME || 'test';
+const COLLECTION_NAME = process.env.COLLECTION_NAME || 'users';
 
 app.use(cors());
 app.use(express.json());
@@ -20,12 +20,12 @@ async function getCollection() {
   if (!dbClient) {
     dbClient = new MongoClient(MONGODB_URI);
     await dbClient.connect();
-    console.log('Connected successfully to Eventra MongoDB Cluster0');
+    console.log('Connected successfully to Cluster0 -> test -> users');
   }
   return dbClient.db(DB_NAME).collection(COLLECTION_NAME);
 }
 
-// POST /api/register - Save user details into "Dynamic Island Users" MongoDB collection under Eventra
+// POST /api/register - Save user details into "users" collection in "test" database (Eventra Project)
 app.post('/api/register', async (req, res) => {
   try {
     const { fullName, email, profession, collegeName, yearOfStudy } = req.body;
@@ -41,22 +41,23 @@ app.post('/api/register', async (req, res) => {
     const collection = await getCollection();
 
     const userDoc = {
+      name: fullName.trim(),
       fullName: fullName.trim(),
       email: email.trim().toLowerCase(),
       profession,
       collegeName: profession === 'Student' ? collegeName.trim() : null,
       yearOfStudy: profession === 'Student' ? yearOfStudy : null,
-      company: 'Eventra',
+      source: 'Dynamic-Island-for-Windows',
       app: 'Dynamic-Island-for-Windows',
       createdAt: new Date(),
     };
 
     const result = await collection.insertOne(userDoc);
-    console.log(`Saved new user to "Dynamic Island Users" collection in Eventra MongoDB. ID: ${result.insertedId}`);
+    console.log(`Saved new user to "users" collection in database "test" (Eventra Project). ID: ${result.insertedId}`);
 
     return res.status(200).json({
       success: true,
-      message: 'Registration saved successfully in Eventra MongoDB.',
+      message: 'Registration saved successfully in Eventra MongoDB (test -> users).',
       id: result.insertedId,
     });
   } catch (error) {
@@ -66,7 +67,7 @@ app.post('/api/register', async (req, res) => {
 });
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', company: 'Eventra', app: 'Dynamic Island for Windows API' });
+  res.json({ status: 'OK', company: 'Eventra (CampuTix)', database: 'test', collection: 'users' });
 });
 
 app.listen(PORT, () => {

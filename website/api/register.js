@@ -1,8 +1,8 @@
 import { MongoClient } from 'mongodb';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://aonikyadavcs23_db_user:Eventra-CampuTix@cluster0.nbrl6dn.mongodb.net/Eventra?retryWrites=true&w=majority&appName=Cluster0';
-const DB_NAME = process.env.DB_NAME || 'Eventra';
-const COLLECTION_NAME = 'Dynamic Island Users';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://aonikyadavcs23_db_user:Eventra-CampuTix@cluster0.nbrl6dn.mongodb.net/test?retryWrites=true&w=majority&appName=Cluster0';
+const DB_NAME = process.env.DB_NAME || 'test';
+const COLLECTION_NAME = process.env.COLLECTION_NAME || 'users';
 
 let cachedClient = null;
 
@@ -35,12 +35,13 @@ export default async function handler(req, res) {
     const collection = db.collection(COLLECTION_NAME);
 
     const userDoc = {
+      name: fullName.trim(),
       fullName: fullName.trim(),
       email: email.trim().toLowerCase(),
       profession,
       collegeName: profession === 'Student' ? collegeName.trim() : null,
       yearOfStudy: profession === 'Student' ? yearOfStudy : null,
-      company: 'Eventra',
+      source: 'Dynamic-Island-for-Windows',
       app: 'Dynamic-Island-for-Windows',
       createdAt: new Date(),
     };
@@ -49,7 +50,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: 'Registration saved successfully in Eventra MongoDB.',
+      message: 'Registration saved successfully in Eventra MongoDB (test -> users).',
       id: result.insertedId,
     });
   } catch (error) {
