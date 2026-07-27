@@ -17,13 +17,13 @@ export function Footer({ onOpenDownload }) {
         <div class={styles.links}>
           <h4 class={styles.linksTitle}>Quick Links</h4>
           <a href="https://github.com/Aonikyadav" target="_blank" rel="noreferrer" class={styles.link}>
-            <i class="fa-brands fa-github" /> GitHub Profile (@Aonikyadav)
+            <i class="fa-brands fa-github" /> Official GitHub Profile (@Aonikyadav)
           </a>
           <button onClick={onOpenDownload} class={styles.link} style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer' }}>
             <i class="fa-solid fa-download" /> Download Standalone (EXE)
           </button>
           <a href="https://github.com/Aonikyadav" target="_blank" rel="noreferrer" class={styles.link}>
-            <i class="fa-solid fa-code-fork" /> GitHub Repositories
+            <i class="fa-solid fa-user" /> Official GitHub Profile
           </a>
         </div>
 

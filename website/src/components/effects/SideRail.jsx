@@ -10,16 +10,16 @@ export function SideRail() {
 
       <div class={styles.centerSocials}>
         <span class={styles.followText}>FOLLOW US</span>
-        <a href="https://github.com/Aonikyadav/window-dynamic-island" target="_blank" rel="noreferrer" class={styles.socialIcon} title="GitHub">
+        <a href="https://github.com/Aonikyadav" target="_blank" rel="noreferrer" class={styles.socialIcon} title="Official GitHub Profile">
           <i class="fab fa-github" />
         </a>
-        <a href="#" class={styles.socialIcon} title="Twitter / X">
+        <a href="https://github.com/Aonikyadav" target="_blank" rel="noreferrer" class={styles.socialIcon} title="Official GitHub Profile">
           <i class="fab fa-x-twitter" />
         </a>
-        <a href="#" class={styles.socialIcon} title="Discord">
+        <a href="https://github.com/Aonikyadav" target="_blank" rel="noreferrer" class={styles.socialIcon} title="Official GitHub Profile">
           <i class="fab fa-discord" />
         </a>
-        <a href="#" class={styles.socialIcon} title="YouTube">
+        <a href="https://github.com/Aonikyadav" target="_blank" rel="noreferrer" class={styles.socialIcon} title="Official GitHub Profile">
           <i class="fab fa-youtube" />
         </a>
       </div>

@@ -126,15 +126,14 @@ export function HeroSection({ onOpenDownload }) {
           <p class={styles.colDesc}>
             Engineered natively with Win32, Direct2D, and WinRT APIs for 60 FPS liquid physics, dual-spring velocity interpolation, and near-zero background CPU impact.
           </p>
-          <a
-            href="https://github.com/Aonikyadav/window-dynamic-island/releases/latest"
-            target="_blank"
-            rel="noreferrer"
+          <button
+            onClick={onOpenDownload}
             class={styles.btnCircle}
+            style={{ border: 'none', cursor: 'pointer' }}
           >
             <i class="fa-solid fa-download" />
             <span>DOWNLOAD EXE</span>
-          </a>
+          </button>
         </motion.div>
       </div>
 
@@ -160,13 +159,13 @@ export function HeroSection({ onOpenDownload }) {
               <span class={styles.hudMetricSub}>Direct2D with &lt; 0.1% CPU</span>
             </div>
 
-            <div class={styles.hudMetricBlock}>
-              <span class={styles.hudMetricTitle}>GLOBAL COMMUNITY</span>
+            <a href="https://github.com/Aonikyadav" target="_blank" rel="noreferrer" class={styles.hudMetricBlock} style={{ textDecoration: 'none' }}>
+              <span class={styles.hudMetricTitle}>DEVELOPER PROFILE</span>
               <span class={styles.hudMetricVal} style={{ fontSize: '1rem', color: 'var(--text-bright)' }}>
-                <i class="fab fa-github" style={{ color: 'var(--rose-primary)' }} /> Open Source
+                <i class="fab fa-github" style={{ color: 'var(--rose-primary)' }} /> @Aonikyadav
               </span>
-              <span class={styles.hudMetricSub}>MIT License on GitHub</span>
-            </div>
+              <span class={styles.hudMetricSub}>Official GitHub Profile</span>
+            </a>
           </div>
         </div>
 

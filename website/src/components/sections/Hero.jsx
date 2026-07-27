@@ -17,11 +17,13 @@ export function Hero() {
         </p>
         <div class={styles.actions}>
           <GlowButton
-            href="https://github.com/Aonikyadav/window-dynamic-island/releases/latest"
+            href="https://github.com/Aonikyadav"
+            target="_blank"
+            rel="noreferrer"
             variant="primary"
-            icon="fa-solid fa-download"
+            icon="fa-brands fa-github"
           >
-            Download Standalone
+            Official GitHub Profile
           </GlowButton>
           <GlowButton href="#setup" variant="secondary" icon="fa-solid fa-terminal">
             Quick Install

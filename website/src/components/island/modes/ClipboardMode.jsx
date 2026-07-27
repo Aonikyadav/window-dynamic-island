@@ -9,7 +9,7 @@ export function ClipboardMode({ isExpanded }) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Clipboard Preview</span>
-          <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>github.com/Aonikyadav/window...</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>github.com/Aonikyadav</span>
         </div>
       </div>
     );
