@@ -1,6 +1,6 @@
 import { MongoClient } from 'mongodb';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://eventra:eventra123@cluster0.mongodb.net/Eventra?retryWrites=true&w=majority';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://aonikyadavcs23_db_user:Eventra-CampuTix@cluster0.nbrl6dn.mongodb.net/Eventra?retryWrites=true&w=majority&appName=Cluster0';
 const DB_NAME = process.env.DB_NAME || 'Eventra';
 const COLLECTION_NAME = 'Dynamic Island Users';
 
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       id: result.insertedId,
     });
   } catch (error) {
-    console.error('Serverless MongoDB Error:', error);
+    console.error('Serverless Eventra MongoDB Error:', error);
     return res.status(500).json({ success: false, message: 'Database insertion error', error: error.message });
   }
 }

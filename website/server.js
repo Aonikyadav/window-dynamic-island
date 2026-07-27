@@ -7,7 +7,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://eventra:eventra123@cluster0.mongodb.net/Eventra?retryWrites=true&w=majority';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://aonikyadavcs23_db_user:Eventra-CampuTix@cluster0.nbrl6dn.mongodb.net/Eventra?retryWrites=true&w=majority&appName=Cluster0';
 const DB_NAME = process.env.DB_NAME || 'Eventra';
 const COLLECTION_NAME = 'Dynamic Island Users';
 
@@ -20,12 +20,12 @@ async function getCollection() {
   if (!dbClient) {
     dbClient = new MongoClient(MONGODB_URI);
     await dbClient.connect();
-    console.log('Connected successfully to Eventra MongoDB Cluster');
+    console.log('Connected successfully to Eventra MongoDB Cluster0');
   }
   return dbClient.db(DB_NAME).collection(COLLECTION_NAME);
 }
 
-// POST /api/register - Save user details into "Dynamic Island Users" MongoDB collection
+// POST /api/register - Save user details into "Dynamic Island Users" MongoDB collection under Eventra
 app.post('/api/register', async (req, res) => {
   try {
     const { fullName, email, profession, collegeName, yearOfStudy } = req.body;
@@ -60,8 +60,8 @@ app.post('/api/register', async (req, res) => {
       id: result.insertedId,
     });
   } catch (error) {
-    console.error('Error saving to MongoDB:', error);
-    return res.status(500).json({ success: false, message: 'Failed to save registration to MongoDB database.', error: error.message });
+    console.error('Error saving to Eventra MongoDB:', error);
+    return res.status(500).json({ success: false, message: 'Failed to save registration to Eventra MongoDB database.', error: error.message });
   }
 });
 
