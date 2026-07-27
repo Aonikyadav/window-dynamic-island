@@ -2,6 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import { MongoClient } from 'mongodb';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -13,6 +18,9 @@ const COLLECTION_NAME = process.env.COLLECTION_NAME || 'di_users';
 
 app.use(cors());
 app.use(express.json());
+
+// Serve built static frontend files from 'dist' directory
+app.use(express.static(path.join(__dirname, 'dist')));
 
 let dbClient = null;
 
@@ -69,6 +77,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', company: 'Eventra (CampuTix)', database: 'dynamic_island', collection: 'di_users' });
 });
 
+// SPA Wildcard Route: Serve index.html for all non-API paths
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
 app.listen(PORT, () => {
-  console.log(`Eventra Dynamic Island MongoDB Server running on http://localhost:${PORT}`);
+  console.log(`Eventra Dynamic Island Server & API running on http://localhost:${PORT}`);
 });
