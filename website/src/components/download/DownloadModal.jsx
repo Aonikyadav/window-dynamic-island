@@ -77,6 +77,22 @@ export function DownloadModal({ isOpen, onClose }) {
     localStorage.setItem('dynamic_island_user', JSON.stringify(formData));
     setSubmitted(true);
 
+    // Optional Remote Endpoint / Webhook (e.g. Formspree, Web3Forms, Google Apps Script)
+    const webhookUrl = import.meta.env.VITE_FORM_WEBHOOK_URL || '';
+    if (webhookUrl) {
+      try {
+        fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...formData,
+            downloadedAt: new Date().toISOString(),
+            app: 'Dynamic-Island-for-Windows'
+          })
+        }).catch(() => {});
+      } catch (e) {}
+    }
+
     // Trigger immediate automatic download
     triggerDirectDownload();
   };
