@@ -58,17 +58,17 @@
 
 .orbWrapper {
   position: relative;
-  width: 80px;
-  height: 80px;
-  margin-bottom: 1.5rem;
+  width: 75px;
+  height: 75px;
+  margin-bottom: 1.2rem;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .orbCore {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--rose-primary), var(--violet-primary));
   box-shadow: 0 0 25px var(--rose-primary);
@@ -92,7 +92,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  height: 35px;
+  height: 32px;
   margin-bottom: 1.5rem;
 }
 
@@ -112,31 +112,68 @@
 .voiceWave span:nth-child(5) { animation-delay: 0.4s; height: 20px; }
 .voiceWave span:nth-child(6) { animation-delay: 0.6s; height: 28px; }
 
-/* Wake Word Settings Simulator Widget */
-.wakeWordConfigBox {
+/* Wake Word Settings Control Panel Widget */
+.settingsWidget {
   width: 100%;
   background: rgba(255, 42, 133, 0.05);
-  border: 1px solid var(--border-active);
-  border-radius: 14px;
-  padding: 1.2rem;
+  border: 1.5px solid var(--border-active);
+  border-radius: 16px;
+  padding: 1.4rem;
   margin-bottom: 1.5rem;
   text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
 }
 
-.configLabel {
+.widgetTitle {
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--rose-primary);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.6rem;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-bright);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkboxRow input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--rose-primary);
+  cursor: pointer;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.fieldLabel {
   font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: 1.5px;
-  color: var(--text-dim);
+  letter-spacing: 1px;
+  color: var(--text-muted);
   text-transform: uppercase;
-  margin-bottom: 0.6rem;
-  display: block;
 }
 
-.inputGroup {
+.wakeInputRow {
   display: flex;
   gap: 0.8rem;
-  margin-bottom: 0.8rem;
 }
 
 .wakeInput {
@@ -157,10 +194,47 @@
   box-shadow: 0 0 12px var(--rose-glow);
 }
 
+.selectInput {
+  background: #050308;
+  border: 1.5px solid var(--border-active);
+  color: var(--text-bright);
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
+.testBtn {
+  background: var(--rose-primary);
+  color: #fff;
+  border: none;
+  padding: 0.65rem 1.4rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 15px var(--rose-glow);
+}
+
+.testBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px var(--rose-glow);
+}
+
 .presetsRow {
   display: flex;
   gap: 0.4rem;
   flex-wrap: wrap;
+  margin-top: 0.2rem;
 }
 
 .presetChip {
@@ -192,7 +266,7 @@
   font-size: 0.85rem;
   color: var(--text-main);
   text-align: left;
-  min-height: 80px;
+  min-height: 85px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;

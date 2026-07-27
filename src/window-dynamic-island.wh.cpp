@@ -6987,6 +6987,8 @@ HWND g_hwndEnableMiniPillNav = nullptr;
 HWND g_hwndEnableAssistant = nullptr;
 HWND g_hwndEnableWakeWord = nullptr;
 HWND g_hwndVoiceWakeWord = nullptr;
+HWND g_hwndVoiceSensitivity = nullptr;
+HWND g_hwndVoiceAutoStart = nullptr;
 HWND g_hwndTransparency = nullptr;
 
 LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -7160,22 +7162,22 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 
             // Section 2: Voice & Speech Assistant (x=345, y=10, w=315, h=265)
             AddGroupBox(L"  Speech & Voice Assistant  ", 345, 10, 315, 265);
-            int gx2 = 355, gy2 = 32;
+            int gx2 = 355, gy2 = 28;
             int gCol2W = 295;
 
             g_hwndEnableStt = AddCheckbox(L"Enable Speech-to-Text Feature", enableStt != 0, gx2, gy2, gCol2W);
-            gy2 += gRowH;
+            gy2 += 24;
             g_hwndSttLive = AddCheckbox(L"Live Real-Time Dictation Stream", sttLive != 0, gx2, gy2, gCol2W);
-            gy2 += gRowH;
+            gy2 += 24;
             g_hwndEnableAssistant = AddCheckbox(L"Enable Voice Assistant Mode", assistant != 0, gx2, gy2, gCol2W);
-            gy2 += gRowH;
-            g_hwndEnableWakeWord = AddCheckbox(L"Enable Voice Wake Word", wakeWord != 0, gx2, gy2, gCol2W);
-            gy2 += gRowH;
-            AddLabel(L"Wake Word Phrase:", gx2, gy2, 110);
+            gy2 += 24;
+            g_hwndEnableWakeWord = AddCheckbox(L"Enable Wake Word (\"Hey Jarvis\")", wakeWord != 0, gx2, gy2, gCol2W);
+            gy2 += 24;
+            AddLabel(L"Wake Word:", gx2, gy2, 90);
             std::wstring curWakeWord = GetStringSettingCopy(L"VoiceAssistant.WakeWord");
             if (curWakeWord.empty()) curWakeWord = L"Hey Jarvis";
-            g_hwndVoiceWakeWord = AddEditBox(gx2 + 110, gy2, 175, 22, curWakeWord.c_str());
-            gy2 += gRowH;
+            g_hwndVoiceWakeWord = AddEdit(curWakeWord.c_str(), gx2 + 95, gy2 - 2, 190);
+            gy2 += 26;
             AddLabel(L"Accent Brightness:", gx2, gy2, 110);
             g_hwndAccentBrightness = AddComboBox(gx2 + 110, gy2, 175, 200);
             SendMessageW(g_hwndAccentBrightness, CB_ADDSTRING, 0, (LPARAM)L"Normal (0%)");
@@ -7190,7 +7192,7 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
             else if (accentBrightness == 100) abSel = 4;
             SendMessageW(g_hwndAccentBrightness, CB_SETCURSEL, abSel, 0);
 
-            gy2 += gRowH;
+            gy2 += 26;
             AddLabel(L"AirPods Popup:", gx2, gy2, 110);
             g_hwndAirPodsMode = AddComboBox(gx2 + 110, gy2, 175, 200);
             SendMessageW(g_hwndAirPodsMode, CB_ADDSTRING, 0, (LPARAM)L"Both (Small ➔ Large)");
@@ -7370,10 +7372,15 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
                 WriteCheck(g_hwndEnableMiniPillNav, L"Modules.EnableMiniPillNav");
                 WriteCheck(g_hwndEnableAssistant, L"Assistant.EnableAssistant");
                 WriteCheck(g_hwndEnableWakeWord, L"VoiceAssistant.EnableWakeWord");
+                WriteCheck(g_hwndVoiceAutoStart, L"VoiceAssistant.AutoStartListening");
                 if (g_hwndVoiceWakeWord) {
                     wchar_t wwBuf[128] = { 0 };
                     GetWindowTextW(g_hwndVoiceWakeWord, wwBuf, 128);
                     WritePrivateProfileStringW(L"Settings", L"VoiceAssistant.WakeWord", wwBuf, GetIniPath().c_str());
+                }
+                if (g_hwndVoiceSensitivity) {
+                    int sensSel = (int)SendMessageW(g_hwndVoiceSensitivity, CB_GETCURSEL, 0, 0);
+                    if (sensSel >= 0) Wh_SetIntValue(L"VoiceAssistant.Sensitivity", sensSel);
                 }
 
                 bool startupChecked = (SendMessage(g_hwndStartup, BM_GETCHECK, 0, 0) == BST_CHECKED);

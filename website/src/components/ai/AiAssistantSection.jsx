@@ -4,6 +4,11 @@ import styles from './AiAssistantSection.module.css';
 
 export function AiAssistantSection() {
   const [customWakeWord, setCustomWakeWord] = useState('Hey Nova');
+  const [enableAssistant, setEnableAssistant] = useState(true);
+  const [enableWakeWord, setEnableWakeWord] = useState(true);
+  const [sensitivity, setSensitivity] = useState('Medium');
+  const [autoStart, setAutoStart] = useState(true);
+  const [testingTrigger, setTestingTrigger] = useState(false);
 
   const presetPhrases = [
     'Hey Jarvis',
@@ -25,6 +30,7 @@ export function AiAssistantSection() {
   const [charIdx, setCharIdx] = useState(0);
 
   useEffect(() => {
+    if (!enableAssistant || !enableWakeWord) return;
     const currentPhrase = samplePhrases[phraseIdx];
     if (charIdx < currentPhrase.length) {
       const timer = setTimeout(() => setCharIdx(charIdx + 1), 35);
@@ -36,7 +42,15 @@ export function AiAssistantSection() {
       }, 3000);
       return () => clearTimeout(resetTimer);
     }
-  }, [charIdx, phraseIdx, customWakeWord]);
+  }, [charIdx, phraseIdx, customWakeWord, enableAssistant, enableWakeWord]);
+
+  const handleTestWakeWord = () => {
+    setTestingTrigger(true);
+    setCharIdx(0);
+    setTimeout(() => {
+      setTestingTrigger(false);
+    }, 3500);
+  };
 
   return (
     <section id="ai" class={styles.section}>
@@ -55,7 +69,7 @@ export function AiAssistantSection() {
         </motion.div>
 
         <div class={styles.grid}>
-          {/* Animated AI Assistant Box */}
+          {/* Animated AI Assistant Settings Box */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -72,48 +86,105 @@ export function AiAssistantSection() {
               <span /><span /><span /><span /><span /><span />
             </div>
 
-            {/* Interactive Wake Word Configuration Widget */}
-            <div class={styles.wakeWordConfigBox}>
-              <span class={styles.configLabel}>
-                <i class="fa-solid fa-gear" style={{ color: 'var(--rose-primary)', marginRight: 6 }} />
-                Custom Wake Word Setting
-              </span>
-              <div class={styles.inputGroup}>
-                <input
-                  type="text"
-                  value={customWakeWord}
-                  onChange={(e) => {
-                    setCustomWakeWord(e.target.value);
-                    setCharIdx(0);
-                  }}
-                  placeholder="Enter custom wake phrase..."
-                  class={styles.wakeInput}
-                />
+            {/* Interactive Voice Assistant Settings Widget */}
+            <div class={styles.settingsWidget}>
+              <div class={styles.widgetTitle}>
+                <i class="fa-solid fa-sliders" /> Voice Assistant Settings
               </div>
-              <div class={styles.presetsRow}>
-                {presetPhrases.map((phrase) => (
-                  <button
-                    key={phrase}
-                    class={`${styles.presetChip} ${customWakeWord === phrase ? styles.presetChipActive : ''}`}
-                    onClick={() => {
-                      setCustomWakeWord(phrase);
+
+              <label class={styles.checkboxRow}>
+                <input
+                  type="checkbox"
+                  checked={enableAssistant}
+                  onChange={(e) => setEnableAssistant(e.target.checked)}
+                />
+                Enable Voice Assistant
+              </label>
+
+              <label class={styles.checkboxRow}>
+                <input
+                  type="checkbox"
+                  checked={enableWakeWord}
+                  onChange={(e) => setEnableWakeWord(e.target.checked)}
+                />
+                Enable Wake Word Detection
+              </label>
+
+              <div class={styles.fieldGroup}>
+                <span class={styles.fieldLabel}>Wake Word Phrase:</span>
+                <div class={styles.wakeInputRow}>
+                  <input
+                    type="text"
+                    value={customWakeWord}
+                    onChange={(e) => {
+                      setCustomWakeWord(e.target.value);
                       setCharIdx(0);
                     }}
+                    placeholder="Type custom wake phrase..."
+                    class={styles.wakeInput}
+                    disabled={!enableWakeWord}
+                  />
+                  <button
+                    class={styles.testBtn}
+                    onClick={handleTestWakeWord}
+                    disabled={!enableWakeWord}
                   >
-                    {phrase}
+                    <i class="fa-solid fa-play" /> {testingTrigger ? 'Listening...' : 'Test'}
                   </button>
-                ))}
+                </div>
+
+                <div class={styles.presetsRow}>
+                  {presetPhrases.map((phrase) => (
+                    <button
+                      key={phrase}
+                      class={`${styles.presetChip} ${customWakeWord === phrase ? styles.presetChipActive : ''}`}
+                      onClick={() => {
+                        setCustomWakeWord(phrase);
+                        setCharIdx(0);
+                      }}
+                      disabled={!enableWakeWord}
+                    >
+                      {phrase}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              <div class={styles.fieldGroup}>
+                <span class={styles.fieldLabel}>Recognition Sensitivity:</span>
+                <select
+                  value={sensitivity}
+                  onChange={(e) => setSensitivity(e.target.value)}
+                  class={styles.selectInput}
+                  disabled={!enableWakeWord}
+                >
+                  <option value="Low">Low (High Confidence)</option>
+                  <option value="Medium">Medium (Default)</option>
+                  <option value="High">High (Lenient)</option>
+                </select>
+              </div>
+
+              <label class={styles.checkboxRow}>
+                <input
+                  type="checkbox"
+                  checked={autoStart}
+                  onChange={(e) => setAutoStart(e.target.checked)}
+                  disabled={!enableWakeWord}
+                />
+                Auto Start Listening on Boot
+              </label>
             </div>
 
             {/* Live Dictation / Voice Matcher Console */}
             <div class={styles.sttConsole}>
               <div class={styles.consoleHeader}>
                 <span><i class="fa-solid fa-microphone" style={{ color: 'var(--rose-primary)' }} /> WAKE WORD LISTENER</span>
-                <span style={{ color: '#4ade80' }}>DYNAMIC MATCH</span>
+                <span style={{ color: testingTrigger ? 'var(--rose-primary)' : '#4ade80' }}>
+                  {testingTrigger ? '⚡ TEST ACTIVATED' : 'DYNAMIC MATCH'}
+                </span>
               </div>
               <div class={styles.typeText}>
-                {samplePhrases[phraseIdx].substring(0, charIdx)}
+                {enableWakeWord ? samplePhrases[phraseIdx].substring(0, charIdx) : '[ Wake Word Disabled in Settings ]'}
                 <span class={styles.cursor} />
               </div>
             </div>
@@ -129,10 +200,10 @@ export function AiAssistantSection() {
           >
             <div class={styles.infoCard}>
               <h3 class={styles.cardTitle}>
-                <i class="fa-solid fa-sliders" /> Fully Customizable Activation Phrase
+                <i class="fa-solid fa-sliders" /> Fully Configurable Wake Phrase
               </h3>
               <p class={styles.cardDesc}>
-                Type any custom phrase in Settings (*Hey Jarvis*, *Hey Nova*, *Computer*, *Friday*, *Athena*). The C++ WinRT speech engine instantly updates recognition list constraints.
+                Type any preferred phrase directly in Settings (*Hey Jarvis*, *Hey Nova*, *Computer*, *Friday*, *Athena*, *Hey Baby*). The C++ WinRT speech engine dynamically updates recognition constraints.
               </p>
             </div>
 
@@ -147,10 +218,10 @@ export function AiAssistantSection() {
 
             <div class={styles.infoCard}>
               <h3 class={styles.cardTitle}>
-                <i class="fa-solid fa-floppy-disk" /> Persisted Configuration
+                <i class="fa-solid fa-floppy-disk" /> Persisted & Applied Instantly
               </h3>
               <p class={styles.cardDesc}>
-                Your custom wake phrase is saved directly to application settings and persists automatically across computer reboots.
+                Your custom wake phrase, sensitivity level, and auto-start settings are saved to application configuration and persist across computer reboots.
               </p>
             </div>
           </motion.div>
