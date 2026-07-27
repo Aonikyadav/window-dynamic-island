@@ -77,21 +77,41 @@ export function DownloadModal({ isOpen, onClose }) {
     localStorage.setItem('dynamic_island_user', JSON.stringify(formData));
     setSubmitted(true);
 
-    // Save registration details to Eventra MongoDB API & local backup
-    const mongoApiUrl = import.meta.env.VITE_MONGODB_API_URL || '/api/register';
-    try {
-      fetch(mongoApiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          company: 'Eventra',
-          collection: 'Dynamic Island Users',
-          downloadedAt: new Date().toISOString(),
-          app: 'Dynamic-Island-for-Windows'
-        })
-      }).catch((err) => console.log('Eventra MongoDB API call:', err));
-    } catch (e) {}
+    // Save registration details to Eventra MongoDB API
+    const payload = {
+      ...formData,
+      company: 'Eventra',
+      database: 'dynamic_island',
+      collection: 'di_users',
+      downloadedAt: new Date().toISOString(),
+      app: 'Dynamic-Island-for-Windows'
+    };
+
+    const sendToMongo = async () => {
+      const endpoints = [
+        import.meta.env.VITE_MONGODB_API_URL,
+        '/api/register',
+        'http://localhost:5000/api/register'
+      ].filter(Boolean);
+
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            console.log('[MongoDB Registration Success via]', url);
+            break;
+          }
+        } catch (e) {
+          console.warn('[MongoDB Registration endpoint failed, trying next]', url);
+        }
+      }
+    };
+
+    sendToMongo();
 
     // Trigger immediate automatic download
     triggerDirectDownload();
